@@ -1,3 +1,11 @@
+# csharpuserlive — accounts build (started 2026-10-19)
+
+> Copied from ~/csharpuser at 0.20 (working tree, incl. its uncommitted changes),
+> without .git history or versions/. Its own git repo, NO remote — nothing here
+> touches the live csharpuser site. Goal: real accounts (Supabase Auth email code),
+> reviews/profile/taste in Supabase as the source of truth, localStorage only a
+> cache, Spotify connect later. New code goes in account.js, not app.js.
+
 # Spindeck — Music Review App Mockup
 
 > ## ⚠️ THIS IS **0.20** — THE ROOT OF THE REPO, ON `main`, LIVE (2026-10-13 → )
