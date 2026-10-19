@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- WIREFRAME MODE (0.13): on unless "Images" was picked in Notifications
+       (sdSetViewMode, app.js). Set here so no real cover paints first. -->
+  <script>try { if (localStorage.getItem('sd-view-mode') !== 'images') document.documentElement.classList.add('sd-wire'); } catch (e) { document.documentElement.classList.add('sd-wire'); }</script>
+  <meta charset="UTF-8">
+  <!-- No zoom, like the app (0.20, 2026-10-13): maximum-scale=1 also stops iOS zooming into a text box under 16px on focus. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+  <title>Spindeck — Mockup (review-only)</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png?v=2">
+  <link rel="icon" type="image/png" sizes="512x512" href="images/spindeck-appicon.png?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="images/spindeck-appicon-180.png?v=2">
+  <meta name="theme-color" content="#111116">
+  <!-- HOME-SCREEN APP (Eric, 2026-09-26: "on their phone it should be like the
+       app, nothing else"): added to the home screen, the site opens standalone —
+       no address bar, no browser toolbar — so the app gets the whole screen and
+       a session records the whole screen (in Safari the bars leave it ~660px
+       tall, and that short viewport is what a replay showed). -->
+  <link rel="manifest" href="manifest.json?v=2">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Spindeck">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800;1,9..40,400&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..900&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=SUSE+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=168">
+  <link rel="stylesheet" href="app.css?v=713">
+  <link rel="stylesheet" href="roadmap.css?v=6">
+</head>
+<body>
+
+  <!-- ==================== DESKTOP VIEWER ==================== -->
+  <div id="viewer">
+
+    <!-- THE TOOLBAR, for user testing (Eric, 2026-09-25): upper-left is one
+         Feedback button (patchnotes.js). Patch notes and the tester's page rail
+         went on 2026-09-26 ("lets get rid of patchnotes and the left side nav").
+         Everything that was
+         here for development is still here, marked `.tb-dev`, and only shows
+         with `?tools` on the URL (body.sd-tools, app.js). Every id is
+         unchanged — app.js, guides.js and roadmap.js wire them by id. -->
+    <header id="toolbar">
+      <div class="tb-section">
+        <div class="tb-test">
+          <!-- ONBOARDING (0.12, 2026-10-02 — Eric: in place of the Flow board link;
+               flow.html is still in the folder). obStart() resets the wizard
+               and puts the phone on step 1, the way the auth screen's buttons do. -->
+          <button class="tb-act tb-test-btn tb-test-btn--go" onclick="obStart()" title="Run the signup flow from the start">Onboarding</button>
+          <button class="tb-act tb-test-btn tb-test-btn--go" id="btn-feedback" data-pop="fb-pop" onclick="toggleFeedback()" title="Tell Eric what you found">Feedback</button>
+          <!-- The popover: a box and Post, nothing else (Eric, 2026-09-26).
+               `hidden` until the button is pressed. Post puts the note into
+               the tester's session transcript (recorder.js). -->
+          <div class="tn-pop fb-pop" id="fb-pop" hidden>
+            <div class="fb-body">
+              <textarea class="fb-text" id="fb-text" rows="6" spellcheck="true"></textarea>
+              <div class="fb-foot">
+                <span class="fb-status" id="fb-status"></span>
+                <button class="tb-act tb-test-btn tb-test-btn--go" onclick="sendFeedback(this)">Post</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Persona switcher — filled by renderPersonaBar() in app.js from window.PERSONAS -->
+        <div class="tb-persona tb-dev" id="persona-bar" aria-label="Persona"></div>
+      </div>
+
+      <div class="tb-section center">
+        <span class="tb-brand">
+          <img class="vinyl-icon" src="images/spindeck-icon-white.png" alt="">
+          <span class="tb-name" role="img" aria-label="Spindeck"></span>
+          <span class="tb-tag tb-dev">mockup</span>
+        </span>
+        <button class="tb-nav tb-dev" id="btn-prev" title="Previous  ← ">&#8249;</button>
+        <div class="tb-screen-info tb-dev">
+          <span id="lbl-name">Home</span>
+          <span class="tb-idx" id="lbl-idx">3 / 13</span>
+        </div>
+        <button class="tb-nav tb-dev" id="btn-next" title="Next  → ">&#8250;</button>
+      </div>
+
+      <!-- RIGHT (reorganised 2026-09-25 so it fits): WHO is looking (Free | Pro,
+           then the Alts switch for the comparison phones) · zoom · the tools as
+           icon buttons (their names are the tooltips) · Roadmap · a Labs menu
+           holding the three external pages. `?tools` only. -->
+      <div class="tb-section end tb-dev">
+        <!-- Plan switcher — view the whole mockup as a Free or Pro account.
+             Filled by renderPlanBar() in app.js. -->
+        <div class="tb-plan" id="plan-bar" aria-label="Plan"></div>
+        <!-- Alts — the comparison phones to the right of home. renderAltBar(). -->
+        <div class="tb-plan tb-alt" id="alt-bar" aria-label="Comparison phones"></div>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <div class="tb-zoom">
+          <button class="tb-act tb-zoom-btn" id="btn-zoom-out" title="Zoom out">−</button>
+          <span id="lbl-zoom" class="tb-zoom-lbl">100%</span>
+          <button class="tb-act tb-zoom-btn" id="btn-zoom-in" title="Zoom in">+</button>
+        </div>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <div class="tb-tools">
+          <button class="tb-act tb-act--ico" id="btn-devbox" onclick="toggleDevBox()" title="Dev — tune the compact bento info box" aria-label="Dev">⚙</button>
+          <button class="tb-act tb-act--ico" id="btn-petbox" onclick="togglePetBox()" title="Pet — every nav-pet reaction and what fires it" aria-label="Pet">☺</button>
+          <button class="tb-act tb-act--ico" id="btn-guides" onclick="toggleGuides()" title="Guides — draggable alignment lines" aria-label="Guides">┼</button>
+          <button class="tb-act tb-act--ico" id="btn-shuffle" title="Shuffle featured album" aria-label="Shuffle">⟳</button>
+          <button class="tb-act tb-act--ico" id="btn-export" title="Export current screen as PNG" aria-label="Export PNG">⬇</button>
+        </div>
+        <button class="tb-act" id="btn-roadmap" onclick="toggleRoadmap()" title="Project roadmap — editable, autosaves">🗺 Roadmap</button>
+        <div class="tb-menu">
+          <button class="tb-act" onclick="toggleTbMenu(this)" title="The lab pages, in new tabs">Labs ▾</button>
+          <div class="tb-menu-list">
+            <a class="tb-menu-it" href="dot-lab.html" target="_blank" title="Design dot-matrix assets">◌ Dots</a>
+            <a class="tb-menu-it" href="belt-lab.html" target="_blank" title="Lay out pulleys, the belt wraps them">⌾ Belt</a>
+            <a class="tb-menu-it" href="flowchart.html" target="_blank">Page Map ↗</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="stage">
+      <nav id="page-nav"></nav>
+      <div id="phone-container"></div>
+      <!-- Dev box: live-tunes the compact bento's two info lines and prints the
+           CSS. Built by initDevBox() in app.js; desktop viewer only. -->
+      <aside id="devbox" hidden>
+        <div class="db-hd">
+          <span class="db-title">Tune</span>
+          <button class="db-x" onclick="toggleDevBox()" title="Close">×</button>
+        </div>
+        <!-- Tab strip — filled by devBoxRenderTabs() from DEVBOX_TABS -->
+        <div class="db-tabs" id="db-tabs"></div>
+        <div class="db-body" id="db-body"></div>
+        <div class="db-foot">
+          <button class="db-btn" onclick="devBoxReset()">Reset</button>
+          <button class="db-btn db-btn--go" onclick="devBoxCopy(this)">Copy CSS</button>
+        </div>
+        <textarea class="db-out" id="db-out" readonly spellcheck="false"></textarea>
+      </aside>
+
+      <!-- Pet box: every reaction the nav pet can play, looping live, with what
+           fires each one. Click a cell to play it on the phone. Built by
+           initPetBox() in app.js; desktop viewer only. -->
+      <aside id="petbox" hidden>
+        <div class="db-hd">
+          <span class="db-title">Nav pet</span>
+          <button class="db-x" onclick="togglePetBox()" title="Close">×</button>
+        </div>
+        <div class="db-body" id="pet-body"></div>
+        <div class="db-foot">
+          <span class="pet-hint">click a cell to play it on the phone</span>
+        </div>
+      </aside>
+
+      <!-- Roadmap: editable planning board behind the toolbar's Roadmap button.
+           Inside #stage (already position:relative) so it covers the phones but
+           leaves the toolbar reachable. Built by rmInit() in roadmap.js on first
+           open; desktop viewer only. -->
+      <section id="roadmap" hidden>
+        <header class="rm-hd">
+          <span class="rm-hd-title">Spindeck — Roadmap</span>
+          <!-- Range + week count are filled by rmInit() from RM_START /
+               RM_WEEK_COUNT, so extending the board can't leave a stale date
+               sitting in the header. -->
+          <span class="rm-hd-sub" id="rm-hd-sub">click a line to edit, a day to add an event</span>
+          <span class="rm-hd-spacer"></span>
+          <button class="rm-btn" onclick="rmReset()">Reset</button>
+          <button class="rm-btn" onclick="rmCopyLink(this)"
+                  title="Copy a link that carries this whole board — the only way to hand it to someone else">Copy link</button>
+          <button class="rm-btn" onclick="rmDownload(this)">Download .md</button>
+          <!-- The other half of Download: a board saved out as markdown reads
+               back in through rmParseMarkdown. The input is hidden and reused;
+               rmUpload clears it each time so re-picking the same file still
+               fires a change event. -->
+          <button class="rm-btn" onclick="rmUpload(this)"
+                  title="Load a roadmap .md saved with Download — replaces this browser's board">Upload .md</button>
+          <input id="rm-file" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden>
+          <button class="rm-btn rm-btn--go" onclick="rmCopy(this)">Copy Markdown</button>
+          <button class="rm-btn rm-btn--x" onclick="toggleRoadmap()" title="Close (Esc)">×</button>
+        </header>
+
+        <div class="rm-grid">
+          <!-- LEFT: calendar over the linear timeline. RIGHT: goals + notes,
+               the whole column, since those are what gets written in live. -->
+          <div class="rm-col">
+            <!-- TWO months on screen, stepping by one, so a page turn keeps
+                 the month you were reading beside the one you're moving to.
+                 Every row is exactly one roadmap week (weeks run Fri → Thu
+                 from Aug 21), so hovering a day lights the matching row in
+                 the timeline below and prints what's due into .rm-cal-read.
+                 Clicking a DAY opens its event popover; clicking the W-number
+                 jumps to that week. Slides: rmCalHTML() into .rm-cal-track. -->
+            <div class="rm-card rm-card--cal">
+              <div class="rm-card-hd">
+                <span class="rm-card-title">Calendar</span>
+                <button class="rm-cal-nav" id="rm-cal-prev" onclick="rmCalStep(-1)"
+                        title="Back one month">&#8249;</button>
+                <span class="rm-cal-name" id="rm-cal-name">—</span>
+                <button class="rm-cal-nav" id="rm-cal-next" onclick="rmCalStep(1)"
+                        title="Forward one month">&#8250;</button>
+                <span class="rm-cal-pips" id="rm-cal-pips"></span>
+              </div>
+              <div class="rm-card-body rm-cal-body">
+                <div class="rm-cal-view" id="rm-cal">
+                  <div class="rm-cal-track" id="rm-cal-track"></div>
+                </div>
+                <!-- The hover answer. Its own line, so a long week item has
+                     the full width instead of a sliver of the header. -->
+                <div class="rm-cal-read" id="rm-cal-read"></div>
+              </div>
+            </div>
+
+            <div class="rm-card">
+              <div class="rm-card-hd">
+                <span class="rm-card-title">Timeline</span>
+                <span class="rm-card-sub">chips cycle: status · track</span>
+              </div>
+              <div class="rm-card-body" id="rm-timeline"></div>
+            </div>
+          </div>
+
+          <div class="rm-col">
+            <div class="rm-card rm-card--goals">
+              <div class="rm-card-hd">
+                <span class="rm-card-title">Goals</span>
+                <span class="rm-card-sub">short · medium · long term</span>
+              </div>
+              <div class="rm-card-body" id="rm-goals"></div>
+            </div>
+            <div class="rm-card rm-card--notes">
+              <div class="rm-card-hd">
+                <span class="rm-card-title">Meeting notes</span>
+                <span class="rm-card-sub">one tab per session · autosaves in this browser</span>
+              </div>
+              <!-- One tab per meeting, filled by rmTabsRender(). The textarea
+                   below is a single element rebound on every switch, not one
+                   per tab — see the note-sessions block in roadmap.js. -->
+              <div class="rm-tabs" id="rm-tabs"></div>
+              <div class="rm-card-body">
+                <textarea class="rm-notes" id="rm-notes" spellcheck="false"
+                          placeholder="Notes, decisions, questions…"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav id="thumb-tray" aria-label="Screen thumbnails"></nav>
+    <!-- A faint link in the corner to the session viewer (Eric, 2026-09-25:
+         "a button in the lower right … make it subtle"). The viewer shows
+         nothing without the secret key, so this can sit on the public site. -->
+    <a class="sd-sessions-link" href="sessions.html" title="Sessions">sessions</a>
+
+  </div>
+
+  <!-- ==================== MOBILE APP ==================== -->
+  <div id="mobile-app">
+
+    <header id="mobile-bar">
+      <div class="mb-seg" id="mb-seg">                                
+        <button class="mb-btn" data-mview="single">Single</button>
+        <button class="mb-btn" data-mview="multi">Multi</button>
+        <button class="mb-btn" data-mview="flow">Flow</button>
+        <button class="mb-btn" data-mview="live">Live</button>
+      </div>
+      <!-- Same persona switcher as the desktop toolbar (renderPersonaBar fills both) -->
+      <div class="tb-persona tb-persona--mb" id="persona-bar-mb" aria-label="Persona"></div>
+      <button id="mb-fs" title="Fullscreen"></button>
+    </header>
+
+    <div id="mb-stage">
+
+      <div id="mb-single" class="mb-view">
+        <div class="mb-subnav">
+          <button class="mb-nav-btn" id="mb-prev">&#8249;</button>
+          <span id="mb-screen-name"></span>
+          <button class="mb-nav-btn" id="mb-next">&#8250;</button>
+        </div>
+        <div id="mb-phone-center"></div>
+      </div>
+
+      <div id="mb-multi" class="mb-view">
+        <div id="mb-multi-grid"></div>
+      </div>
+
+      <div id="mb-flow" class="mb-view">
+        <iframe src="flowchart.html" id="mb-flow-frame" frameborder="0"></iframe>
+      </div>
+
+      <div id="mb-live" class="mb-view">
+        <div id="mobile-wrap">
+          <div id="mobile-content"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- SD_DOTS — the brand dot-matrix generator. Must load before screens.js:
+       the home screen's static markup calls sdPet() as it parses. Design new
+       patterns in dot-lab.html (toolbar → ◌ Dots). -->
+  <script src="belt.js?v=1"></script>
+  <script src="dots.js?v=1"></script>
+  <script src="data.js?v=144"></script>
+  <!-- GENERATED by tools/build_personas.py from personas/*.csv — must load after
+       data.js (it swaps ARCHIVE) and before app.js (which applies the persona). -->
+  <script src="personas.js?v=8"></script>
+  <script src="screens.js?v=380"></script>
+  <!-- 0.14b: anime.js draws the logo between onboarding and home (sdHomeIntro, end of app.js). -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+  <script src="app.js?v=456"></script>
+  <!-- Quick share — needs app.js first (computeAlbumColors, albumDraft, shellAlbum). -->
+  <script src="share.js?v=15"></script>
+  <!-- Roadmap overlay. Independent of the prototype — loads last, touches
+       nothing in app.js, and only runs when the toolbar button is pressed. -->
+  <script src="roadmap.js?v=8"></script>
+  <script src="guides.js?v=1"></script>
+  <!-- Patch notes + Feedback — the user-testing chrome. Loads last; only the
+       two toolbar buttons call into it. -->
+  <!-- The shared-element transition: a tapped cover or face glides into its
+       place on the next screen. app.js calls in through typeof sdMorph. -->
+  <script src="morph.js?v=1"></script>
+  <script src="patchnotes.js?v=4"></script>
+  <!-- The session recorder (user testing): records the tester's session to
+       a Supabase storage bucket the site can only add to. Loads its own
+       libraries only when it is configured and the page is in testing mode.
+       See the note at the top of recorder.js. -->
+  <script src="recorder.js?v=8"></script>
+  <!-- The version switch: a "+" above the sessions link, LOCAL ADDRESSES
+       ONLY (versions.js builds nothing on the public site) — a dev tool, not
+       something testers can pick. See the note at the top of versions.js. -->
+  <script src="versions.js?v=8"></script>
+  <!-- 0.12 (2026-10-02, Eric): the PNG / 3x snap buttons (snap.js) are off.
+       Put back <script src="snap.js?v=4"></script> here to restore them. -->
+</body>
+</html>

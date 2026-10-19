@@ -1,0 +1,239 @@
+{
+ "home": {
+  "navAdd": [
+   0.5,
+   0.9548
+  ],
+  "navSearch": [
+   0.3589,
+   0.9548
+  ],
+  "navTrending": [
+   0.6411,
+   0.9548
+  ],
+  "navProfile": [
+   0.7821,
+   0.9548
+  ],
+  "bell": [
+   0.1062,
+   0.1056
+  ],
+  "gear": [
+   0.9211,
+   0.1056
+  ],
+  "deckCover": [
+   0.5,
+   0.3022
+  ],
+  "deckReview": [
+   0.5,
+   0.7828
+  ],
+  "deckFace": [
+   0.5,
+   0.5871
+  ],
+  "full.feedText": [
+   0.3804,
+   0.2904
+  ],
+  "full.feedFace": [
+   0.1043,
+   0.2725
+  ],
+  "full.feedRecord": [
+   0.8397,
+   0.2959
+  ],
+  "full.feedCmt": [
+   0.0931,
+   0.3203
+  ]
+ },
+ "notifications": {},
+ "settings": {
+  "account": [
+   0.5,
+   0.3075
+  ]
+ },
+ "search": {
+  "firstTrend": [
+   0.5,
+   0.2562
+  ],
+  "input": [
+   0.5776,
+   0.1126
+  ]
+ },
+ "search-results": {
+  "albumRow": [
+   0.5,
+   0.3152
+  ]
+ },
+ "quick-review": {
+  "pick": [
+   0.1938,
+   0.3328
+  ]
+ },
+ "quick-review-rate": {},
+ "trending": {
+  "tile": [
+   0.187,
+   0.2992
+  ],
+  "full.tile": [
+   0.187,
+   0.1531
+  ]
+ },
+ "album": {
+  "artist": [
+   0.4044,
+   0.6539
+  ],
+  "yourReview": [
+   0.5,
+   0.8186
+  ],
+  "cd": [
+   0.1346,
+   0.6476
+  ],
+  "full.revText": [
+   0.5,
+   0.4659
+  ],
+  "full.revFace": [
+   0.1119,
+   0.4329
+  ],
+  "full.revCmt": [
+   0.6685,
+   0.4329
+  ]
+ },
+ "rate-sheet": {},
+ "artist": {
+  "albumTile": [
+   0.187,
+   0.8957
+  ],
+  "full.revText": [
+   0.5,
+   0.4404
+  ],
+  "full.revFace": [
+   0.0865,
+   0.4058
+  ]
+ },
+ "review-page": {
+  "face": [
+   0.5,
+   0.2711
+  ],
+  "record": [
+   0.5,
+   0.4831
+  ],
+  "heart": [
+   0.2831,
+   0.3723
+  ]
+ },
+ "review-sheet": {
+  "face": [
+   0.5,
+   0.2318
+  ],
+  "record": [
+   0.5,
+   0.6257
+  ]
+ },
+ "profile": {
+  "edit": [
+   0.5,
+   0.5698
+  ],
+  "favMid": [
+   0.4992,
+   0.8637
+  ],
+  "full.pinText": [
+   0.5,
+   0.4125
+  ],
+  "full.histRecord": [
+   0.5826,
+   0.5158
+  ],
+  "full.pickRow": [
+   0.5,
+   0.285
+  ]
+ },
+ "edit-profile": {},
+ "friend-profile": {},
+ "auth": {
+  "signIn": [
+   0.5,
+   0.5191
+  ]
+ },
+ "onboarding0": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding1": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding2": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding3": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding4": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding5": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding6": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding7": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ }
+}

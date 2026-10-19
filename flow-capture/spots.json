@@ -1,0 +1,212 @@
+{
+ "home": {
+  "navSearch": [
+   0.4118,
+   0.9548
+  ],
+  "navTrending": [
+   0.5881,
+   0.9548
+  ],
+  "navProfile": [
+   0.7645,
+   0.9548
+  ],
+  "bell": [
+   0.1062,
+   0.1056
+  ],
+  "gear": [
+   0.9211,
+   0.1056
+  ],
+  "deckCover": [
+   0.5,
+   0.3022
+  ],
+  "deckReview": [
+   0.5,
+   0.7828
+  ],
+  "deckFace": [
+   0.5,
+   0.5871
+  ],
+  "full.feedText": [
+   0.5,
+   0.3679
+  ],
+  "full.feedFace": [
+   0.1043,
+   0.3168
+  ],
+  "full.feedRecord": [
+   0.5826,
+   0.3366
+  ],
+  "full.feedCmt": [
+   0.6865,
+   0.3168
+  ]
+ },
+ "notifications": {},
+ "settings": {
+  "account": [
+   0.5,
+   0.3075
+  ]
+ },
+ "search": {
+  "firstRow": [
+   0.173,
+   0.7603
+  ]
+ },
+ "trending": {
+  "ddCover": [
+   0.5,
+   0.3022
+  ],
+  "ddScore": [
+   0.5,
+   0.5828
+  ],
+  "full.tile": [
+   0.187,
+   0.32
+  ]
+ },
+ "album": {
+  "artist": [
+   0.3809,
+   0.6539
+  ],
+  "yourReview": [
+   0.5,
+   0.8186
+  ],
+  "cd": [
+   0.1346,
+   0.6476
+  ],
+  "full.revText": [
+   0.5,
+   0.4664
+  ],
+  "full.revFace": [
+   0.1119,
+   0.4257
+  ],
+  "full.revCmt": [
+   0.6685,
+   0.4257
+  ]
+ },
+ "rate-sheet": {},
+ "artist": {
+  "albumTile": null,
+  "full.revText": [
+   0.5,
+   0.4415
+  ],
+  "full.revFace": [
+   0.0865,
+   0.3988
+  ]
+ },
+ "review-page": {
+  "face": [
+   0.5,
+   0.2711
+  ],
+  "record": [
+   0.5,
+   0.5968
+  ],
+  "heart": [
+   0.2831,
+   0.3723
+  ]
+ },
+ "review-sheet": {
+  "face": [
+   0.5,
+   0.2318
+  ],
+  "record": [
+   0.5,
+   0.6712
+  ]
+ },
+ "profile": {
+  "edit": [
+   0.8675,
+   0.1896
+  ],
+  "favMid": null,
+  "full.pinText": [
+   0.5,
+   0.3376
+  ],
+  "full.histRecord": [
+   0.5826,
+   0.4541
+  ]
+ },
+ "edit-profile": {},
+ "friend-profile": {},
+ "auth": {
+  "signIn": [
+   0.5,
+   0.5191
+  ]
+ },
+ "onboarding0": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding1": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding2": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding3": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding4": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding5": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding6": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ },
+ "onboarding7": {
+  "next": [
+   0.8965,
+   0.1502
+  ]
+ }
+}

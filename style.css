@@ -1,0 +1,1151 @@
+/* ============================================================
+   RESET
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ============================================================
+   ROOT — VIEWER TOKENS
+   ============================================================ */
+:root {
+  /* Viewer chrome */
+  --vbg:      #0c0c0c;
+  --vsurface: #161616;
+  --vborder:  #252525;
+  --vtext:    #e8e8e8;
+  --vdim:     #4a4a4a;
+  --vaccent:  #8892a4;
+
+  /* Phone dimensions (iPhone 15 Pro logical size) */
+  --pw: 393px;
+  --ph: 852px;
+  --pr: 55px;   /* frame border-radius */
+  --sr: 51px;   /* screen border-radius */
+
+  /* Layout heights */
+  --toolbar-h: 50px;
+  --tray-h:    42px;
+  --nav-w:     148px;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--vbg);
+  color: var(--vtext);
+  overflow: hidden;
+}
+
+/* ============================================================
+   DESKTOP / MOBILE ROUTING
+   ============================================================ */
+#viewer    { display: flex; flex-direction: column; height: 100vh; }
+#mobile-app { display: none; }
+
+@media (max-width: 767px) {
+  #viewer     { display: none; }
+  #mobile-app { display: flex; flex-direction: column; height: 100dvh; }
+}
+
+/* ============================================================
+   MOBILE APP SHELL
+   ============================================================ */
+#mobile-app {
+  background: #030412;
+  overflow: hidden;
+  position: relative;
+}
+
+#mobile-wrap {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+#mobile-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+/* Page-to-page transition on mobile (Live): a crossfade, the same forwards and
+   back. It was a horizontal slide until 2026-09-18 — see `navigate()` in app.js.
+   The old screen fades out quickly where it stands; the new one is lifted out of
+   flow over it (`position: absolute`) and fades in a beat later, so for a moment
+   you see neither at full strength rather than two pages ghosted together.
+   ⚠ OPACITY ONLY — no transform. A transform on a whole screen puts every
+   masked disc and fillet in it on a resampled layer for the length of the move.
+   ⚠ MOBILE_FADE_MS in app.js must outlast .06s + .22s. */
+#mobile-content > .fade-exit  { animation: fadeScreenOut .16s ease-out forwards; pointer-events: none; }
+#mobile-content > .fade-enter {
+  position: absolute; inset: 0; z-index: 1;
+  animation: fadeScreenIn .22s ease-out .06s both;
+}
+@keyframes fadeScreenOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes fadeScreenIn  { from { opacity: 0; } to { opacity: 1; } }
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+#toolbar {
+  flex-shrink: 0;
+  height: var(--toolbar-h);
+  background: var(--vsurface);
+  border-bottom: 1px solid var(--vborder);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  gap: 10px;
+  user-select: none;
+}
+
+.tb-section { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+/* The center section is twice as wide as its content and paints after the left
+   one, so its empty gutter used to sit ON TOP of anything the left section
+   overflowed — which silently ate the click on the last persona button once a
+   fifth persona made the row that long. The gutter is transparent, so it should
+   not be a click target either; the controls inside it still are. */
+/* ⚠️ `flex: 1`, not the 2 it had (2026-09-25): the right section grew an Alts
+   switch and the toolbar has to fit at 1280 — the centre only needs its three
+   controls, so it gives the sides the room. */
+.tb-section.center { justify-content: center; flex: 1; pointer-events: none; }
+.tb-section.center > * { pointer-events: auto; }
+.tb-section.end    { justify-content: flex-end; gap: 6px; flex: 1.6; }
+/* A hairline between the toolbar's groups (who's looking · zoom · tools). */
+.tb-sep { width: 1px; height: 18px; background: var(--vborder); flex-shrink: 0; margin: 0 2px; }
+
+.vinyl-icon { width: 22px; height: auto; flex-shrink: 0; }
+
+/* Wordmark PNG masked to the viewer's chrome ink (asset is 1749×249) */
+.tb-name {
+  flex-shrink: 0;
+  width: 90px; height: 13px;
+  background-color: var(--vtext);
+  -webkit-mask: url('images/spindeck-wordmark.png') center / contain no-repeat;
+  mask: url('images/spindeck-wordmark.png') center / contain no-repeat;
+}
+
+.tb-tag {
+  font-size: 10px;
+  background: rgba(136, 146, 164, 0.13);
+  color: var(--vaccent);
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* prev / next arrows */
+.tb-nav {
+  background: none;
+  border: 1px solid var(--vborder);
+  color: var(--vdim);
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .12s, border-color .12s, background .12s;
+  flex-shrink: 0;
+}
+.tb-nav:hover:not(:disabled) { color: var(--vtext); border-color: #404040; background: rgba(255,255,255,0.05); }
+.tb-nav:disabled { opacity: 0.2; cursor: default; }
+
+.tb-screen-info { text-align: center; min-width: 120px; }
+.tb-screen-info > span:first-child { display: block; font-size: 13px; font-weight: 500; }
+.tb-idx { font-size: 11px; color: var(--vdim); }
+
+/* view segmented control */
+.view-seg {
+  display: flex;
+  background: var(--vbg);
+  border: 1px solid var(--vborder);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 1px;
+}
+.seg {
+  background: none;
+  border: none;
+  color: var(--vdim);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.seg.active { background: var(--vsurface); color: var(--vtext); }
+
+/* zoom controls */
+.tb-zoom { display: flex; align-items: center; gap: 4px; }
+.tb-zoom-btn { width: 26px; padding: 0; text-align: center; font-size: 16px; line-height: 1; }
+.tb-zoom-lbl { font-size: 11px; color: var(--vdim); min-width: 34px; text-align: center; font-family: inherit; }
+
+/* action buttons */
+.tb-act {
+  background: none;
+  border: 1px solid var(--vborder);
+  color: var(--vdim);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: color .1s, border-color .1s;
+}
+.tb-act:hover { color: var(--vtext); border-color: #404040; }
+/* The tools as ICONS (2026-09-25): Dev · Pet · Guides · Shuffle · PNG were five
+   labelled buttons and the row did not fit once the Alts switch joined it.
+   Their names live in the tooltips; the cluster has no gaps so it reads as one
+   strip of five, not five loose buttons. */
+.tb-tools { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+.tb-act--ico { width: 28px; padding: 5px 0; text-align: center; font-size: 13px; line-height: 1; }
+/* A tool that is OPEN (the pet box stamps `.on`) reads lit, since its icon alone cannot say so. */
+.tb-act.on { background: rgba(136,146,164,0.22); border-color: #404040; color: var(--vtext); }
+/* Labs — the three external pages behind one button. */
+.tb-menu { position: relative; flex-shrink: 0; }
+.tb-menu-list {
+  display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 300;
+  flex-direction: column; min-width: 132px; padding: 4px;
+  background: var(--vsurface); border: 1px solid var(--vborder); border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+}
+.tb-menu.open .tb-menu-list { display: flex; }
+.tb-menu.open > .tb-act { color: var(--vtext); border-color: #404040; }
+.tb-menu-it {
+  display: block; padding: 7px 10px; border-radius: 5px;
+  font-size: 11px; color: var(--vdim); text-decoration: none; white-space: nowrap;
+}
+.tb-menu-it:hover { background: rgba(255,255,255,0.06); color: var(--vtext); }
+
+/* Persona switcher — one segmented control, rendered into BOTH the desktop
+   toolbar and the mobile bar by renderPersonaBar(). "Demo" is the original
+   data.js catalogue; the rest come from personas.js. */
+.tb-persona {
+  display: flex; align-items: center; gap: 2px;
+  flex-shrink: 0;            /* never squeezed by the wordmark beside it */
+  height: 26px; box-sizing: border-box;
+  margin-left: 6px; padding: 0 2px;
+  border-radius: 8px; background: rgba(136,146,164,0.10);
+}
+.tb-pers {
+  background: none; border: none; cursor: pointer;
+  height: 22px; padding: 0 9px; border-radius: 6px;
+  display: inline-flex; align-items: center;
+  font-family: inherit; font-size: 11px; line-height: 1; white-space: nowrap;
+  color: var(--vdim);
+  transition: color .12s, background .12s;
+}
+.tb-pers:hover { color: var(--vtext); }
+.tb-pers.active { background: rgba(136,146,164,0.20); color: var(--vtext); }
+
+/* Plan switcher — Free / Pro. Deliberately the SAME segmented control as
+   .tb-persona: both answer "who is looking at this screen", so they should
+   read as one family of switch. The one difference is the armed colour —
+   Pro lights GOLD, the app's own reserved-for-paid accent (--sd-gold in
+   app.css), so the toolbar agrees with what the shop is selling. */
+.tb-plan {
+  display: flex; align-items: center; gap: 2px;
+  flex-shrink: 0;
+  height: 26px; box-sizing: border-box;
+  padding: 0 2px;
+  border-radius: 8px; background: rgba(136,146,164,0.10);
+}
+.tb-plan-b {
+  background: none; border: none; cursor: pointer;
+  height: 22px; padding: 0 10px; border-radius: 6px;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: inherit; font-size: 11px; line-height: 1; white-space: nowrap;
+  color: var(--vdim);
+  transition: color .12s, background .12s;
+}
+.tb-plan-b:hover { color: var(--vtext); }
+.tb-plan-b.active { background: rgba(136,146,164,0.20); color: var(--vtext); }
+/* Pro armed: gold fill, dark text — the only gold in the viewer chrome, so it
+   is unmistakable at a glance which account you are looking at. */
+.tb-plan-b[data-plan="pro"].active {
+  background: #e8a83c; color: #17140e; font-weight: 600;
+}
+.tb-plan-star { font-size: 9px; line-height: 1; }
+
+/* ============================================================
+   GUIDES — draggable alignment hairlines over the stage (guides.js).
+   The overlay takes no pointer; the lines do. z 95: over the roadmap.
+   ============================================================ */
+#guides {
+  position: absolute; inset: 0; z-index: 95;
+  pointer-events: none; overflow: hidden;
+}
+.gd-line {
+  position: absolute; pointer-events: auto;
+  --gd: #ff2d95;
+}
+.gd-line--h { left: 0; right: 0; height: 0; cursor: ns-resize; }
+.gd-line--v { top: 0; bottom: 0; width: 0; cursor: ew-resize; }
+/* The ink: 1px. The hit area: 9px (::before), so it can be grabbed. */
+.gd-line::after {
+  content: ''; position: absolute; background: var(--gd); opacity: 0.9;
+}
+.gd-line--h::after { left: 0; right: 0; top: 0; height: 1px; }
+.gd-line--v::after { top: 0; bottom: 0; left: 0; width: 1px; }
+.gd-line::before { content: ''; position: absolute; }
+.gd-line--h::before { left: 0; right: 0; top: -4px; height: 9px; }
+.gd-line--v::before { top: 0; bottom: 0; left: -4px; width: 9px; }
+.gd-line.is-live { --gd: #ff2d95; }
+.gd-line:not(.is-live) { --gd: #2ee6ff; }
+.gd-line.is-drag::after { opacity: 1; }
+.gd-tag {
+  position: absolute; pointer-events: none;
+  font: 600 10px/1 'SUSE Mono', ui-monospace, monospace; color: #0a0a0a;
+  background: var(--gd); padding: 2px 5px; border-radius: 3px; white-space: nowrap;
+}
+.gd-line--h .gd-tag { left: 8px; top: 3px; }
+.gd-line--v .gd-tag { top: 8px; left: 3px; }
+
+#guides-panel {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 96;
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px;
+  background: var(--vsurface); border: 1px solid var(--vborder); border-radius: 8px;
+  box-shadow: 0 8px 26px rgba(0,0,0,0.45);
+  font-size: 11px; color: var(--vtext);
+}
+#guides-panel[hidden] { display: none; }
+.gd-btn {
+  background: none; border: 1px solid var(--vborder); color: var(--vtext);
+  font: inherit; font-size: 11px; padding: 4px 9px; border-radius: 6px; cursor: pointer;
+}
+.gd-btn:hover { border-color: #ff2d95; color: #fff; }
+.gd-btn--clear:hover { border-color: #ff5c5c; }
+.gd-hint { color: var(--vdim); font-size: 10px; margin: 0 4px; }
+.gd-x {
+  background: none; border: none; color: var(--vdim); font-size: 15px; line-height: 1;
+  cursor: pointer; padding: 0 2px;
+}
+.gd-x:hover { color: var(--vtext); }
+
+/* ============================================================
+   DEV BOX — live-tune the compact bento's two info lines.
+   Floats over #stage on the right; the phone stays centred because
+   #phone-container fills the full width (same trick as #page-nav).
+   ============================================================ */
+#devbox {
+  position: absolute; top: 14px; right: 14px; z-index: 60;
+  width: 240px; max-height: calc(100% - 28px);
+  display: flex; flex-direction: column;
+  background: var(--vsurface);
+  border: 1px solid var(--vborder); border-radius: 10px;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.45);
+  font-size: 11px; color: var(--vtext);
+  overflow: hidden;
+}
+#devbox[hidden] { display: none; }
+
+/* ── Pet box — the nav pet's whole vocabulary, looping ────────────────────
+   Same chrome as #devbox (it reuses every .db-* class), one column to the left
+   so both can be open at once and you can watch the pet while tuning. */
+#petbox {
+  position: absolute; top: 14px; right: 268px; z-index: 60;
+  width: 242px; max-height: calc(100% - 28px);
+  display: flex; flex-direction: column;
+  background: var(--vsurface);
+  border: 1px solid var(--vborder); border-radius: 10px;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.45);
+  font-size: 11px; color: var(--vtext);
+  overflow: hidden;
+}
+#petbox[hidden] { display: none; }
+/* ⚠️ `overflow-x: hidden` and `min-width: 0` together. The stage is a fixed
+   63px and the trigger captions are long, so without them the grid's `1fr`
+   tracks resolve against content and the panel grows a horizontal scrollbar. */
+#petbox .db-body { overflow-x: hidden; }
+.pet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pet-cell {
+  min-width: 0;
+  background: #111116; border: 1px solid var(--vborder); border-radius: 8px;
+  padding: 8px 4px 6px; cursor: pointer; text-align: center;
+  transition: border-color .15s ease, background .15s ease;
+}
+.pet-cell:hover { border-color: var(--vaccent); background: #16161c; }
+/* ⚠️ The stage is NOT `.sd-scene`. The shared clock repaints every element with
+   that class, so a preview wearing it gets overwritten with the live frame and
+   the whole grid shows one pose. It only needs the box the face scales into. */
+.pet-stage {
+  position: relative; width: 63px; height: 30px; margin: 0 auto;
+  color: var(--star, #e8a83c);
+}
+.pet-name { margin-top: 5px; font-weight: 600; letter-spacing: .2px; }
+.pet-trig { color: var(--vdim); font-size: 9.5px; line-height: 1.25; margin-top: 1px; }
+.pet-hint { color: var(--vdim); font-size: 10px; }
+.db-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-bottom: 1px solid var(--vborder);
+}
+.db-title { font-weight: 600; letter-spacing: .2px; }
+.db-x {
+  background: none; border: none; color: var(--vdim);
+  font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px;
+}
+.db-x:hover { color: var(--vtext); }
+/* Tab strip — one per DEVBOX_TABS entry. Reset and Copy CSS below act on the
+   ACTIVE tab, which is why the strip sits directly above the sliders. */
+.db-tabs {
+  display: flex; gap: 4px;
+  padding: 7px 8px 0;
+  border-bottom: 1px solid var(--vborder);
+}
+.db-tab {
+  flex: 1;
+  background: none; border: 1px solid transparent; border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  color: var(--vdim); font: inherit; font-size: 10.5px;
+  padding: 5px 6px; cursor: pointer;
+  margin-bottom: -1px;   /* sit the active tab's edge on the strip's border */
+}
+.db-tab:hover { color: var(--vtext); }
+.db-tab.on {
+  color: var(--vtext);
+  background: var(--vsurface);
+  border-color: var(--vborder);
+}
+.db-body { padding: 6px 10px 8px; overflow-y: auto; }
+.db-grp {
+  margin-top: 8px; padding-top: 7px;
+  border-top: 1px solid var(--vborder);
+  color: var(--vdim); font-size: 10px; letter-spacing: .4px; text-transform: uppercase;
+}
+.db-grp:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.db-row {
+  display: grid; grid-template-columns: 44px 1fr 44px;
+  align-items: center; gap: 7px; margin: 6px 0;
+  color: var(--vtext); text-transform: none; letter-spacing: 0; font-size: 11px;
+}
+.db-row input[type=range] { width: 100%; accent-color: var(--vaccent); height: 14px; }
+.db-val {
+  font-family: ui-monospace, Menlo, monospace; font-size: 10px;
+  color: var(--vdim); text-align: right;
+}
+.db-foot {
+  display: flex; gap: 6px; padding: 8px 10px;
+  border-top: 1px solid var(--vborder);
+}
+.db-btn {
+  flex: 1; padding: 5px 8px; cursor: pointer;
+  background: none; border: 1px solid var(--vborder); border-radius: 6px;
+  color: var(--vdim); font-family: inherit; font-size: 11px;
+}
+.db-btn:hover { color: var(--vtext); border-color: #404040; }
+.db-btn--go { color: var(--vtext); }
+.db-out {
+  height: 116px; resize: none; border: none; border-top: 1px solid var(--vborder);
+  background: var(--vbg); color: var(--vdim);
+  font-family: ui-monospace, Menlo, monospace; font-size: 9.5px; line-height: 1.45;
+  padding: 7px 9px; white-space: pre; overflow: auto;
+}
+
+/* Mobile: a dropdown, not a segment — five persona names will not fit next to
+   the Single/Multi/Flow/Live control on a phone. */
+.tb-persona--mb { margin-left: auto; padding: 0; background: none; }
+.tb-pers-sel {
+  height: 34px; max-width: 116px;
+  padding: 0 6px; border-radius: 6px;
+  border: 1px solid var(--vborder); background: var(--vbg);
+  color: var(--vtext); font-family: inherit; font-size: 12px;
+  cursor: pointer;
+}
+
+/* ============================================================
+   STAGE
+   ============================================================ */
+#stage {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  position: relative;   /* anchor for the floating page-nav */
+}
+
+/* ── Left page nav — floats over the stage so the phone centers in the
+   true middle of the viewport rather than being pushed right by the rail ── */
+#page-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 5;
+  width: var(--nav-w);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 10px 8px;
+  background: color-mix(in srgb, var(--vsurface) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-right: 1px solid var(--vborder);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--vborder) transparent;
+}
+
+.pnav-btn {
+  flex-shrink: 0;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--vdim);
+  font-size: 11px;
+  padding: 6px 9px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color .12s, background .12s;
+}
+.pnav-btn:hover:not(.active) { color: #aaa; background: rgba(255,255,255,0.04); }
+.pnav-btn.active { color: var(--vtext); background: rgba(255,255,255,0.08); }
+
+/* Live-flow entries (search / album / artist / review) launch the real in-app
+   interaction rather than a standalone screen — flagged with a small arrow. */
+.pnav-flow::after {
+  content: '↗';
+  float: right;
+  opacity: 0.4;
+  font-size: 10px;
+  margin-left: 6px;
+}
+
+.pnav-divider { height: 1px; background: var(--vborder); margin: 6px 2px; flex-shrink: 0; }
+
+.pnav-multi { display: flex; align-items: center; gap: 5px; }
+.pnav-multi.multi-active { color: var(--vaccent); }
+
+/* ── Phone area ── */
+#phone-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  overflow: hidden;
+}
+
+/* ============================================================
+   PHONE WRAP + FRAME
+   ============================================================ */
+.phone-wrap {
+  flex-shrink: 0;
+  transform-origin: center center;
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+.phone-frame {
+  position: relative;
+  width: var(--pw);
+  height: var(--ph);
+  border-radius: var(--pr);
+  background: linear-gradient(158deg, #303030 0%, #1d1d1d 28%, #191919 52%, #1f1f1f 74%, #292929 100%);
+  box-shadow:
+    0 0 0 1px #3d3d3d,
+    0 0 0 2.5px #0a0a0a,
+    0 45px 120px rgba(0,0,0,0.8),
+    inset 0 1px 0 rgba(255,255,255,0.09),
+    inset 0 -1px 0 rgba(0,0,0,0.5);
+  user-select: none;
+}
+
+/* Side buttons */
+.side-btn {
+  position: absolute;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #272727, #333 50%, #222);
+}
+
+.side-btn.action  { left: -3.5px; top: 88px;  width: 3.5px; height: 22px; box-shadow: -1px 0 3px rgba(0,0,0,0.7); }
+.side-btn.vol-up  { left: -3.5px; top: 132px; width: 3.5px; height: 36px; box-shadow: -1px 0 3px rgba(0,0,0,0.7); }
+.side-btn.vol-dn  { left: -3.5px; top: 182px; width: 3.5px; height: 36px; box-shadow: -1px 0 3px rgba(0,0,0,0.7); }
+.side-btn.power   { right: -3.5px; top: 170px; width: 3.5px; height: 68px; box-shadow:  1px 0 3px rgba(0,0,0,0.7); }
+
+/* The screen */
+.phone-screen {
+  position: absolute;
+  top: 4px; left: 4px; right: 4px; bottom: 4px;
+  border-radius: var(--sr);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* ⚠ THE SCREEN'S OWN COLOUR, not black. The status bar and the home indicator
+     are transparent strips above and below `.screen-content`, and with a black
+     phone behind them they read as two black bars — which a real iPhone does
+     not show: the app's colour runs to the edges and the time, the island and
+     the indicator float on it. `paintPhoneChrome` (app.js) sets `--pscreen-bg`
+     from the screen being shown, after every render. Black is only the
+     fallback for a screen with no background of its own. */
+  background: var(--pscreen-bg, #000);
+}
+
+/* Status bar */
+.status-bar {
+  flex-shrink: 0;
+  height: 59px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 28px 10px;
+  position: relative;
+  z-index: 20;
+  color: #fff;
+  transition: color 0.2s, background 0.2s;
+}
+
+.status-bar.dark-icons { color: #000; }
+
+.sb-time {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  flex: 1;
+  font-feature-settings: 'tnum';
+}
+
+.dynamic-island {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 37px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 30;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.04);
+}
+
+.sb-icons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.sb-icons svg { display: block; flex-shrink: 0; }
+
+/* Content area */
+.screen-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.screen-content::-webkit-scrollbar { display: none; }
+
+/* Home indicator — GONE (Eric, 2026-09-18): the app runs to the rounded
+   bottom of the screen instead of stopping 34px short at a bar. The element
+   is still emitted (renderSingle) and paintPhoneChrome still colours it, so
+   flipping this one line brings it back; `.screen-content` is `flex: 1` and
+   simply takes the height. */
+.home-indicator {
+  display: none;   /* was `display: flex` — restore that to bring the bar back */
+  flex-shrink: 0;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  /* Follows the status bar's icon theme, now that it sits on the app's colour. */
+  color: #fff;
+}
+.home-indicator.dark-icons { color: #000; }
+.home-indicator::after {
+  content: '';
+  width: 134px;
+  height: 5px;
+  background: currentColor;
+  opacity: 0.18;
+  border-radius: 99px;
+}
+
+/* ============================================================
+   BOTTOM TRAY — variants only
+   ============================================================ */
+#thumb-tray {
+  flex-shrink: 0;
+  height: var(--tray-h);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
+  background: var(--vsurface);
+  border-top: 1px solid var(--vborder);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+#thumb-tray::-webkit-scrollbar { display: none; }
+
+.vpill {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--vborder);
+  color: var(--vdim);
+  font-size: 11px;
+  padding: 4px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s, color .12s, border-color .12s;
+  white-space: nowrap;
+}
+.vpill.active { background: rgba(255,255,255,0.08); color: var(--vtext); border-color: #555; }
+.vpill:hover:not(.active) { border-color: #444; color: #aaa; }
+
+/* ============================================================
+   VARIANT COLUMNS — version label above each phone
+   ============================================================ */
+.var-col {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.var-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--vdim);
+  font-family: 'SUSE Mono', monospace;
+  transition: color 0.15s;
+  user-select: none;
+}
+
+.var-sublabel {
+  font-size: 10px;
+  color: var(--vdim);
+  opacity: 0.5;
+  user-select: none;
+}
+
+.var-col.var-active .var-label { color: var(--vaccent); }
+
+.var-col.var-active .phone-frame {
+  box-shadow:
+    0 0 0 1px #3d3d3d,
+    0 0 0 2.5px var(--vaccent),
+    0 45px 120px rgba(0,0,0,0.8),
+    inset 0 1px 0 rgba(255,255,255,0.09),
+    inset 0 -1px 0 rgba(0,0,0,0.5);
+}
+
+/* Multi-variant container (all variants of one page side by side) */
+#phone-container.multi-variant {
+  align-items: flex-end;
+  gap: 10px;                      /* 20 → 10 (Eric, 2026-09-25: "closer together"); renderSingle's width budget matches */
+  padding: 16px 12px 24px;
+  overflow-x: auto;
+  justify-content: safe center;   /* center the dark+light pair; fall back to start if it ever overflows */
+  cursor: grab;
+}
+#phone-container.multi-variant.is-grabbing { cursor: grabbing; }
+#phone-container.multi-variant::-webkit-scrollbar { display: none; }
+
+/* ============================================================
+   MULTI-VIEW MODE
+   ============================================================ */
+#phone-container.multi {
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 20px 10px;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+#phone-container.multi .phone-wrap {
+  cursor: pointer;
+}
+
+#phone-container.multi .phone-wrap:hover .phone-frame {
+  box-shadow:
+    0 0 0 1px #3d3d3d,
+    0 0 0 3px var(--vaccent),
+    0 20px 60px rgba(0,0,0,0.6);
+}
+
+.phone-multi-label {
+  display: none;
+  text-align: center;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--vdim);
+}
+
+#phone-container.multi .phone-multi-label { display: block; }
+
+/* ============================================================
+   MOBILE TOOLBAR & VIEWS
+   ============================================================ */
+/* Phones open straight into Live with no bar (initMobile sets body.mb-bare;
+   `?tools` on the URL leaves it off and the bar shows). */
+body.mb-bare #mobile-bar { display: none; }
+#mobile-bar {
+  flex-shrink: 0;
+  height: 48px;
+  background: var(--vsurface);
+  border-bottom: 1px solid var(--vborder);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 8px;
+}
+
+.mb-seg {
+  flex: 1;
+  display: flex;
+  background: var(--vbg);
+  border: 1px solid var(--vborder);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 1px;
+}
+
+.mb-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--vdim);
+  font-size: 12px;
+  padding: 4px 0;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.mb-btn.active { background: var(--vsurface); color: var(--vtext); }
+
+#mb-fs {
+  background: none;
+  border: 1px solid var(--vborder);
+  color: var(--vdim);
+  width: 36px;
+  height: 34px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: color .1s, border-color .1s;
+}
+#mb-fs:active { color: var(--vtext); border-color: #555; }
+
+#mb-stage {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.mb-view {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+}
+
+.mb-subnav {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 8px;
+  background: var(--vbg);
+  border-bottom: 1px solid var(--vborder);
+}
+
+.mb-nav-btn {
+  background: none;
+  border: 1px solid var(--vborder);
+  color: var(--vdim);
+  width: 36px;
+  height: 32px;
+  border-radius: 7px;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: color .12s, border-color .12s;
+}
+.mb-nav-btn:disabled { opacity: 0.2; cursor: default; }
+.mb-nav-btn:not(:disabled):active { color: var(--vtext); border-color: #555; }
+
+#mb-screen-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--vtext);
+}
+
+#mb-phone-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--vbg);
+}
+
+#mb-multi-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-content: flex-start;
+  -webkit-overflow-scrolling: touch;
+  background: var(--vbg);
+}
+
+#mb-flow-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  display: block;
+}
+
+#mb-live #mobile-wrap { flex: 1; }
+
+/* ============================================================
+   LOOK SWITCHER
+   ============================================================ */
+.look-seg {
+  display: flex;
+  background: var(--vbg);
+  border: 1px solid var(--vborder);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 1px;
+}
+.lseg {
+  background: none;
+  border: none;
+  color: var(--vdim);
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.lseg.active { background: var(--vsurface); color: var(--vtext); }
+.lseg:hover:not(.active) { color: #aaa; }
+
+#btn-compare.active {
+  color: var(--vaccent);
+  border-color: var(--vaccent);
+}
+
+/* ============================================================
+   COMPARE MODE
+   ============================================================ */
+#phone-container.compare {
+  gap: 24px;
+  align-items: center;
+}
+
+.look-phone-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.look-phone-label {
+  font-size: 10px;
+  font-family: inherit;
+  color: var(--vdim);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: color .15s;
+}
+.look-phone-label.active { color: var(--vaccent); }
+
+.phone-wrap.look-active .phone-frame {
+  box-shadow:
+    0 0 0 1px #3d3d3d,
+    0 0 0 3px var(--vaccent),
+    0 45px 120px rgba(0,0,0,0.8),
+    inset 0 1px 0 rgba(255,255,255,0.09),
+    inset 0 -1px 0 rgba(0,0,0,0.5);
+}
+
+/* ── REC BOX ──────────────────────────────────────────────────────────────
+   The recommendation knobs (app.js §DEEZER AT RUNTIME), as a strip along the
+   bottom of the viewer. Inside #viewer, which the mobile prototype hides
+   wholesale, so it never reaches a phone. */
+#recbox {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 14px;
+  padding: 7px 14px;
+  border-top: 1px solid var(--vborder);
+  background: var(--vsurface);
+  font-size: 10.5px; color: var(--vdim);
+  overflow-x: auto;
+}
+#recbox .rb-field { display: flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; }
+#recbox .rb-lbl { letter-spacing: 0.2px; }
+#recbox input[type="range"] { width: 96px; accent-color: var(--vaccent); cursor: pointer; }
+#recbox .rb-val { min-width: 22px; text-align: right; color: var(--vtext); font-variant-numeric: tabular-nums; }
+#recbox .rb-toggle, #recbox .rb-go {
+  height: 22px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--vborder);
+  background: rgba(136,146,164,0.10); color: var(--vdim);
+  font-family: inherit; font-size: 10.5px;
+}
+#recbox .rb-toggle.on { background: rgba(136,146,164,0.22); border-color: #404040; color: var(--vtext); }
+#recbox .rb-go:hover { color: var(--vtext); border-color: #404040; }
+#recbox .rb-go.rb-busy { opacity: 0.5; pointer-events: none; }
+#recbox .rb-count { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   USER TESTING (Eric, 2026-09-25): the dev chrome is gone unless `?tools`
+   is on the URL (body.sd-tools, app.js). Without it the toolbar is Patch
+   notes · Feedback on the left and the wordmark in the middle; the left
+   page rail, the recs bar and every `.tb-dev` control stay in the DOM
+   (app.js still wires them by id) but never paint.
+   ============================================================ */
+body:not(.sd-tools) .tb-dev,
+body:not(.sd-tools) .tb-section.center,
+body:not(.sd-tools) #page-nav,
+body:not(.sd-tools) #thumb-tray,
+body:not(.sd-tools) .var-label,        /* the version over each phone … */
+body:not(.sd-tools) .var-sublabel,     /* … and the variant's name under it (Eric, 2026-09-25) */
+body:not(.sd-tools) #recbox { display: none !important; }
+/* NO BAR (Eric, 2026-09-25: "we don't need a full bar at the top, just the two
+   buttons"): in testing mode the toolbar is out of the flow — no height, no
+   surface, no border — and the two buttons float in the top-left corner over
+   the stage, which now has the whole window. The bottom tray is gone too. */
+#toolbar { position: relative; }
+body:not(.sd-tools) #toolbar {
+  position: absolute; top: 0; left: 0; z-index: 50;
+  width: auto; height: auto; padding: 12px 14px;
+  background: none; border: 0;
+}
+body:not(.sd-tools) #toolbar .tb-section { flex: none; }
+/* The phone sits in the vertical middle of the stage in testing mode (Eric,
+   2026-09-26). The dev layout bottom-aligns the columns so the version label
+   above and the variant name below can differ in height; both are hidden here. */
+body:not(.sd-tools) #phone-container.multi-variant { align-items: center; padding: 16px 12px; }
+/* The wordmark, left of prev · next in tools mode. */
+.tb-brand { display: inline-flex; align-items: center; gap: 8px; margin-right: 6px; }
+
+/* The two buttons and their popovers (patchnotes.js). */
+.tb-test { position: relative; display: flex; align-items: center; gap: 6px; }
+.tb-test-btn { font-size: 11.5px; padding: 6px 12px; color: #b9b9b9; }
+.tb-test-btn.on { background: rgba(136,146,164,0.22); border-color: #404040; color: var(--vtext); }
+.tb-test-btn--go { color: var(--vtext); border-color: #3a3a3a; background: rgba(255,255,255,0.05); }
+.tb-test-btn--go:hover { background: rgba(255,255,255,0.1); }
+.tn-pop {
+  position: absolute; top: calc(100% + 10px); left: 0; z-index: 60;
+  width: 380px; max-height: min(560px, calc(100vh - var(--toolbar-h) - 24px));
+  display: flex; flex-direction: column;
+  background: #1c1c1c; border: 1px solid #303030; border-radius: 10px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+  color: #d8d8d8; font-size: 12.5px; line-height: 1.5;
+  user-select: text;
+}
+.tn-pop[hidden] { display: none; }
+.fb-pop { left: 0; }   /* under its (only) button */
+.tn-hd { display: flex; align-items: center; padding: 10px 12px 8px 14px; border-bottom: 1px solid #2a2a2a; }
+.tn-hd-title { font-size: 12px; font-weight: 600; color: var(--vtext); letter-spacing: 0.2px; }
+.tn-x { margin-left: auto; width: 22px; height: 22px; border: 0; border-radius: 6px; background: none; color: #777; font-size: 16px; line-height: 1; cursor: pointer; }
+.tn-x:hover { background: rgba(255,255,255,0.08); color: var(--vtext); }
+.tn-body { overflow-y: auto; padding: 6px 14px 12px; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+.tn-entry { padding: 10px 0 8px; border-bottom: 1px solid #262626; }
+.tn-entry:last-child { border-bottom: 0; }
+.tn-entry-hd { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.tn-date { font-size: 10.5px; color: #8a8a8a; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tn-title { font-weight: 600; color: var(--vtext); }
+.tn-new { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 99px; background: rgba(136,146,164,0.2); color: #c6ccd8; }
+.tn-list { margin: 0; padding-left: 16px; }
+.tn-list li { margin: 2px 0; }
+.fb-body { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.fb-lead { margin: 0; color: #a8a8a8; }
+.fb-text {
+  width: 100%; resize: vertical; min-height: 96px;
+  background: #121212; border: 1px solid #2e2e2e; border-radius: 8px; padding: 8px 10px;
+  color: var(--vtext); font: inherit; font-size: 12.5px; line-height: 1.5;
+}
+.fb-text:focus { outline: none; border-color: #4a4a4a; }
+.fb-foot { display: flex; align-items: center; gap: 10px; }
+.fb-status { flex: 1; min-width: 0; font-size: 11px; color: #8fa07a; }
+
+/* THE TESTER'S NAME PROMPT (recorder.js, 2026-09-25): one card over
+   everything on a first visit, desktop and phone. It is `#sd-rec-prompt`, so
+   the recorder blocks it out of its own recording. */
+.rec-prompt { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,0.72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.rec-card { width: 100%; max-width: 340px; padding: 22px 22px 20px; border-radius: 12px; background: #1c1c1c; border: 1px solid #303030; box-shadow: 0 20px 60px rgba(0,0,0,0.6); color: #e8e8e8; font-family: 'DM Sans', system-ui, sans-serif; }
+.rec-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #8a8a8a; margin-bottom: 8px; }
+.rec-lbl { display: block; font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+.rec-input { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #3a3a3a; background: #121212; color: #fff; font: inherit; font-size: 16px; }
+.rec-input:focus { outline: none; border-color: #6a6a6a; }
+.rec-note { margin: 12px 0 14px; font-size: 12px; line-height: 1.5; color: #9a9a9a; }
+.rec-go { width: 100%; padding: 11px; border: 0; border-radius: 8px; background: #e8e8e8; color: #111; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.rec-go:hover { background: #fff; }
+
+/* The corner link to sessions.html — barely there until hovered. */
+.sd-sessions-link { position: fixed; right: 12px; bottom: 10px; z-index: 40; font-size: 10.5px; letter-spacing: 0.3px; color: #3a3a3a; text-decoration: none; padding: 4px 6px; border-radius: 4px; }
+.sd-sessions-link:hover { color: #9a9a9a; background: rgba(255,255,255,0.04); }
+.sd-sessions-link.is-holding { color: #e8e8e8; transition: color 3s linear; }   /* held: brightens over the three seconds, then the name prompt returns */
+
+/* THE VERSION SWITCH (versions.js, 2026-09-28): a "+" sitting above the
+   sessions link, with the version on screen beside it; pressed, the list of
+   versions opens upward. Only ever built on a local address. */
+.sd-ver { position: fixed; right: 12px; bottom: 34px; z-index: 40; display: flex; align-items: center; gap: 4px; font-size: 10.5px; letter-spacing: 0.3px; color: #4a4a4a; }
+.sd-ver-btn { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; background: none; color: #6a6a6a; font: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.sd-ver-btn:hover, .sd-ver.is-open .sd-ver-btn { color: #e8e8e8; background: rgba(255,255,255,0.06); }
+.sd-ver-menu { position: absolute; right: 0; bottom: 26px; min-width: 64px; padding: 4px; border-radius: 8px; background: #1c1c1c; border: 1px solid #303030; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 2px; }
+.sd-ver-menu[hidden] { display: none; }
+.sd-ver-it { padding: 5px 10px; border-radius: 5px; font-size: 12px; color: #9a9a9a; text-decoration: none; text-align: right; }
+.sd-ver-it:hover { color: #e8e8e8; background: rgba(255,255,255,0.06); }
+.sd-ver-it.is-here { color: #e8e8e8; font-weight: 700; }
+
+
+/* 0.13: the name card's second choice — skip onboarding. */
+.rec-skip { width: 100%; margin-top: 8px; padding: 11px; border: 1px solid #3a3a3a; border-radius: 8px; background: transparent; color: #e8e8e8; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.rec-skip:hover { border-color: #6a6a6a; }
+
+/* 0.20 (2026-10-13): no double-tap zoom on the phone — the app can't zoom
+   (sdNoZoom, end of app.js; the viewport meta in index.html). */
+html { touch-action: manipulation; }

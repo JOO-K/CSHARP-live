@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spindeck · User flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<!--
+  THE USER FLOW BOARD (0.1 copy, 2026-10-02 — built from headless captures of
+  this version, see flow/flow-data.js; the page itself is -1's flow.html). Eric: "i organized the user flow and
+  page mockups in figma but its hard to move around the pages and arrows … i
+  want to rebuild it in our user mockup website so i can play with it and the
+  arrows and lines follow in a manner that makes sense aka it points to things".
+  The Figma board documents THIS version (-1).
+
+  Rebuilt from the Figma board (see flow/flow-data.js): every page is a card
+  you can drag, every arrow leaves from the SPOT on its page that it came from
+  in Figma (a dot — a button, a row, a review card; on the "full length" pages
+  for things below the fold) and lands on the side of the target facing it.
+  Arrows into the same side of a page share it out instead of stacking.
+
+  Routing is recomputed every frame, so moving a card re-routes everything
+  attached to it. Edits (positions, arrows, labels) live in localStorage;
+  Export copies the whole board as a flow-data.js to bake it in.
+
+  Controls: drag a card to move it · drag the empty board to pan · wheel to
+  zoom · hover a card to light its arrows · click an arrow to select it (label,
+  delete) · drag an arrow's dot to move where it leaves from (onto another
+  card too) · drag its head onto another card to re-point it · Alt-drag from
+  a card (or Draw arrow) to make a new one.
+-->
+<style>
+  :root {
+    --bg: #0f0f12; --panel: #18181d; --line: #2a2a31; --ink: #e8e2d6; --ink2: #9a958c; --ink3: #5d5a55;
+    --wire: #ff5a1f; --pair: #55545c; --sel: #ffd28a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 13px/1.35 'DM Sans', system-ui, sans-serif; overflow: hidden; }
+  button { font: inherit; }
+
+  #bar { position: fixed; top: 10px; left: 12px; right: 12px; z-index: 20; display: flex; align-items: center; gap: 4px; pointer-events: none; }
+  #bar > * { pointer-events: auto; }
+  .b { border: 0; border-radius: 5px; padding: 3px 7px; background: rgba(255,255,255,.05); color: var(--ink2); font-size: 10.5px; font-weight: 500; cursor: pointer; white-space: nowrap; text-decoration: none; }
+  .b:hover { background: rgba(255,255,255,.11); color: var(--ink); }
+  .b.on { background: var(--wire); color: #140a05; }
+  .plans { display: inline-flex; gap: 2px; padding: 2px; border-radius: 7px; background: rgba(255,255,255,.04); margin-right: 4px; }
+  .plans .b { background: none; padding: 2px 7px; }
+  .plans-l { font-size: 10px; color: var(--ink3); margin: 0 2px 0 4px; }
+  .plans .b.on { background: rgba(255,255,255,.12); color: var(--ink); }
+  .ttl { font-weight: 700; font-size: 11px; color: var(--ink); margin: 0 6px 0 4px; }
+  .sp { flex: 1; }
+  .note { font-size: 10.5px; color: var(--ink2); opacity: 0; transition: opacity .2s; margin-right: 4px; }
+  .note.is-on { opacity: 1; }
+
+  #stage { position: fixed; inset: 0; cursor: grab; touch-action: none; }
+  #stage.is-panning { cursor: grabbing; }
+  #stage.is-linking, #stage.is-linking .card { cursor: crosshair; }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  /* The images' corners are transparent (Figma's grey canvas was cut out of
+     them); the radius matches the phone's own corner, 46px at this scale. */
+  .card { position: absolute; border-radius: 46px; overflow: hidden; background: transparent; cursor: move;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 20px 50px rgba(0,0,0,.55); user-select: none; }
+  .card.is-wide { border-radius: 40px; }
+  .card img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
+  .card.is-hot { box-shadow: 0 0 0 2px var(--wire), 0 20px 50px rgba(0,0,0,.55); }
+  .card.is-near { box-shadow: 0 0 0 2px rgba(255,90,31,.45), 0 20px 50px rgba(0,0,0,.55); }
+  .card.is-drop { box-shadow: 0 0 0 3px var(--sel), 0 20px 50px rgba(0,0,0,.55); }
+
+  #wires { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  #wires .halo { fill: none; stroke: rgba(10,10,12,.7); stroke-width: 3.6; stroke-linecap: round; }
+  #wires .w { fill: none; stroke: var(--wire); stroke-width: 1.3; stroke-linecap: round; }
+  #wires .hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
+  #wires .dot { fill: var(--wire); stroke: #140a05; stroke-width: 1.5; pointer-events: all; cursor: grab; }
+  #wires .head { fill: transparent; pointer-events: all; cursor: grab; }
+  #wires .pair { fill: none; stroke: var(--pair); stroke-width: 1.5; stroke-dasharray: 5 5; }
+  #wires g.sel .dot { fill: var(--sel); }
+  #wires g.dim .w, #wires g.dim .dot { opacity: .16; }
+  #wires g.dim .halo { opacity: .25; }
+  #wires g.hot .w { stroke-width: 2; }
+  #wires g.sel .w { stroke: var(--sel); stroke-width: 2; }
+  #wires g.sel .head { fill: rgba(255,210,138,.25); stroke: var(--sel); stroke-width: 1.5; }
+  /* Where an arrow passes BEHIND a page it is drawn faint and dashed, not cut
+     away — a line that vanished under one page and reappeared by another read
+     as ending there (Eric: "why does the settings page point to the album page"). */
+  #wires .under { fill: none; stroke: var(--wire); stroke-width: 1; stroke-dasharray: 3 4; opacity: .28; }
+  #wires .under.dim { opacity: .06; }
+  #wires .under.hot { opacity: .55; }
+  #wires .ghost { fill: none; stroke: var(--sel); stroke-width: 2; stroke-dasharray: 6 4; }
+
+  #tags { position: fixed; inset: 0; pointer-events: none; }
+  .nm { position: absolute; transform: translate(-.6em, calc(-100% - .6em)); padding: .2em .6em; border-radius: .5em; background: var(--bg);
+    font-size: var(--nm-size, 10px); font-weight: 700; letter-spacing: .2px; color: #f4f0e8; white-space: nowrap; }   /* left edge of the card; backed so lines pass behind it */   /* backed + lifted 8px: lines pass behind the title, not through it */
+  .nm.is-hot { color: #fff; }
+  .lb { position: absolute; transform: translate(-50%, -50%); padding: 3px 7px; border-radius: 5px; background: rgba(15,15,18,.92);
+    box-shadow: 0 0 0 1px rgba(255,90,31,.5); font-size: 11px; color: var(--ink); white-space: nowrap; }
+  .lb.is-sel { box-shadow: 0 0 0 1px var(--sel); }
+
+  #info { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 20; display: none; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 10px; background: var(--panel); box-shadow: 0 0 0 1px var(--line), 0 14px 40px rgba(0,0,0,.5); }
+  #info.is-on { display: flex; }
+  #info .ft { font-size: 12px; color: var(--ink2); white-space: nowrap; }
+  #info .ft b { color: var(--ink); font-weight: 700; }
+  #info input { width: 240px; border: 0; border-radius: 6px; padding: 5px 8px; background: rgba(255,255,255,.07); color: var(--ink); font: inherit; font-size: 12px; outline: 0; }
+  #info input:focus { box-shadow: 0 0 0 1px var(--wire); }
+  .b.del:hover { background: #5a1d14; color: #ffd0c4; }
+
+  #pages { position: fixed; top: 36px; left: 12px; z-index: 20; display: none; flex-direction: column; gap: 1px; max-height: calc(100vh - 70px); overflow: auto;
+    padding: 6px; border-radius: 10px; background: var(--panel); box-shadow: 0 0 0 1px var(--line), 0 14px 40px rgba(0,0,0,.5); }
+  #pages.is-on { display: flex; }
+  #pages button { border: 0; background: none; color: var(--ink2); text-align: left; padding: 4px 8px; border-radius: 5px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  #pages button:hover { background: rgba(255,255,255,.07); color: var(--ink); }
+  #pages button i { font-style: normal; color: var(--ink3); margin-left: 6px; font-size: 11px; }
+
+  #help { position: fixed; right: 12px; bottom: 12px; z-index: 19; font-size: 11px; color: var(--ink3); text-align: right; line-height: 1.5; pointer-events: none; }
+</style>
+</head>
+<body>
+  <div id="stage"><div id="world"></div></div>
+  <svg id="wires">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto">
+        <path d="M0 0 L10 5 L0 10 Z" fill="#ff5a1f"/>
+      </marker>
+      <marker id="ah-sel" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
+        <path d="M0 0 L10 5 L0 10 Z" fill="#ffd28a"/>
+      </marker>
+    </defs>
+    <defs id="masks"></defs>
+    <g id="pairs"></g>
+    <g id="unders"></g>
+    <g id="edges"></g>
+    <path id="ghost" class="ghost" d="" />
+  </svg>
+  <div id="tags"></div>
+
+  <div id="bar">
+    <a class="b" href="index.html" title="Back to the mockup">← Mockup</a>
+    <span class="ttl">User flow</span>
+    <span class="plans-l">plan</span><span class="plans" id="plans"></span>
+    <button class="b" id="b-pages" title="Jump to a page">Pages</button>
+    <button class="b" id="b-fit" title="Fit everything (F)">Fit</button>
+    <button class="b" id="b-labels" title="Show every arrow's label (L)">Labels</button>
+    <button class="b" id="b-link" title="Draw a new arrow: drag from a spot on one page to another (or hold Alt)">Draw arrow</button>
+    <span class="sp"></span>
+    <span class="note" id="note"></span>
+    <button class="b" id="b-export" title="Copy the whole board (positions, arrows, labels) as flow-data.js">Export</button>
+    <button class="b" id="b-reset" title="Throw away your changes and go back to the Figma board">Reset</button>
+  </div>
+  <div id="pages"></div>
+
+  <div id="info">
+    <span class="ft" id="info-ft"></span>
+    <input id="info-lbl" placeholder="Label (what you tap)" spellcheck="false">
+    <button class="b del" id="info-del" title="Delete this arrow (Del)">Delete</button>
+  </div>
+  <div id="help">drag cards · drag board to pan · wheel to zoom<br>click an arrow to edit · drag its dot / head to re-wire · Alt-drag to draw</div>
+
+<script src="flow/flow-data.js?v=1"></script>
+<script src="flow/plans.js?v=2"></script>
+<script>
+(function () {
+  const DATA = window.FLOW_DATA;
+  /* PLANS (2026-10-01): "figma" is the board as Eric drew it (flow-data.js);
+     every other plan (flow/<name>.js -> FLOW_PLANS) overrides the positions and
+     the arrows. Each plan keeps its own edits; ?plan= or the switch picks one. */
+  const PLANS = Object.assign({ figma: { name: DATA.planName || 'Figma' } }, window.FLOW_PLANS || {});
+  let PLAN = (location.search.match(/[?&]plan=([\w-]+)/) || [])[1];
+  if (!PLANS[PLAN]) { try { PLAN = localStorage.getItem('spindeck-flow-01-plan'); } catch (e) {} }
+  if (!PLANS[PLAN]) PLAN = 'flowplan1' in PLANS ? 'flowplan1' : 'figma';   // (0.1: opens on the full board)
+  try { localStorage.setItem('spindeck-flow-01-plan', PLAN); } catch (e) {}
+  const P0 = PLANS[PLAN];
+  const KEY = PLAN === 'figma' ? 'spindeck-flow-01' : 'spindeck-flow-01:' + PLAN;
+  const BASE_EDGES = P0.edges || DATA.edges;
+  const stamp = 'v2:' + (PLAN === 'figma' ? '' : PLAN + ':') + JSON.stringify(BASE_EDGES).length + ':' + DATA.nodes.length;
+
+  // ── State ──────────────────────────────────────────────────
+  const N = {};                     // id → node {id,name,img,x,y,w,h}
+  const order = [];                 // draw order (last = on top)
+  let E = [], PAIRS = DATA.pairs || [];
+  let V = { x: 0, y: 0, k: 0.12 };  // screen = world * k + (x, y)
+  let showAll = false, linkMode = false, sel = null, hot = null;
+
+  function load() {
+    // A plan may list the pages it shows (`nodes`); the rest stay off the board.
+    const keep = P0.nodes ? new Set(P0.nodes) : null;
+    DATA.nodes.forEach(n => {
+      if (keep && !keep.has(n.id)) return;
+      N[n.id] = Object.assign({}, n);
+      if (P0.pos && P0.pos[n.id]) { N[n.id].x = P0.pos[n.id][0]; N[n.id].y = P0.pos[n.id][1]; }
+      order.push(n.id);
+    });
+    E = BASE_EDGES.filter(e => N[e.from] && N[e.to]).map(e => Object.assign({}, e));
+    PAIRS = PAIRS.filter(([a, b]) => N[a] && N[b]);
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+    if (saved) {
+      Object.keys(saved.pos || {}).forEach(id => { if (N[id]) { N[id].x = saved.pos[id][0]; N[id].y = saved.pos[id][1]; } });
+      if (saved.stamp === stamp && Array.isArray(saved.edges)) E = saved.edges.filter(e => N[e.from] && N[e.to]);
+      if (saved.view) V = saved.view;
+      return true;
+    }
+    return false;
+  }
+  let saveT = 0;
+  function save() {
+    clearTimeout(saveT);
+    saveT = setTimeout(() => {
+      const pos = {}; order.forEach(id => pos[id] = [Math.round(N[id].x * 10) / 10, Math.round(N[id].y * 10) / 10]);
+      try { localStorage.setItem(KEY, JSON.stringify({ stamp, pos, edges: E, view: V })); } catch (e) {}
+    }, 200);
+  }
+
+  // ── DOM ────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), world = $('world'), gE = $('edges'), gP = $('pairs'), ghost = $('ghost'), tags = $('tags');
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const mk = (tag, attrs) => { const el = document.createElementNS(SVGNS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; };
+  const cardEl = {};
+
+  function buildCards() {
+    world.innerHTML = '';
+    order.forEach(id => {
+      const n = N[id];
+      const c = document.createElement('div');
+      c.className = 'card' + (n.h > n.w * 2.6 ? ' is-tall' : '') + (n.w > n.h ? ' is-wide' : '');
+      c.dataset.id = id;
+      c.innerHTML = '<img alt="" loading="lazy" decoding="async" src="' + n.img + '?v=2">';   // v2: corners cut transparent
+      world.appendChild(c);
+      cardEl[id] = c;
+      c.addEventListener('pointerenter', () => { if (!drag) setHot(id); });
+      c.addEventListener('pointerleave', () => { if (!drag && hot === id) setHot(null); });
+      place(id);
+    });
+    const pl = $('pages');
+    pl.innerHTML = order.map(id => {
+      const n = N[id], ins = E.filter(e => e.to === id).length, outs = E.filter(e => e.from === id).length;
+      return '<button data-id="' + id + '">' + n.name + (ins || outs ? '<i>' + (outs ? outs + ' out' : '') + (ins && outs ? ' · ' : '') + (ins ? ins + ' in' : '') + '</i>' : '') + '</button>';
+    }).join('');
+  }
+  function place(id) {
+    const n = N[id], c = cardEl[id];
+    c.style.left = n.x + 'px'; c.style.top = n.y + 'px'; c.style.width = n.w + 'px'; c.style.height = n.h + 'px';
+  }
+  function applyView() {
+    world.style.transform = 'translate(' + V.x + 'px,' + V.y + 'px) scale(' + V.k + ')';
+    draw();
+  }
+
+  // ── Geometry ───────────────────────────────────────────────
+  const sx = x => x * V.k + V.x, sy = y => y * V.k + V.y;
+  const toWorld = (cx, cy) => ({ x: (cx - V.x) / V.k, y: (cy - V.y) / V.k });
+  const NORM = { l: [-1, 0], r: [1, 0], t: [0, -1], b: [0, 1] };
+
+  // The spot an arrow leaves from: a point ON the source card.
+  function srcPt(e, ov) {
+    if (ov && ov.src) return ov.src;
+    const n = N[e.from];
+    return { x: n.x + e.fx * n.w, y: n.y + e.fy * n.h };
+  }
+  // Which side of the target faces the source spot. Tall cards are judged on
+  // their top phone-height, so an arrow from the side doesn't aim at the middle
+  // of a 2,500px page.
+  function sideOf(n, p) {
+    const h = Math.min(n.h, n.w * 2.2);
+    const cx = n.x + n.w / 2, cy = n.y + h / 2;
+    const dx = (p.x - cx) / (n.w / 2), dy = (p.y - cy) / (h / 2);
+    // Never the BOTTOM edge: that is where every page's nav bar sits, and a head
+    // pointing at it reads as a nav link (Eric). Below or beside → the facing side.
+    if (dy < 0 && Math.abs(dy) > Math.abs(dx)) return 't';
+    return dx < 0 ? 'l' : 'r';
+  }
+  // Arrows into the same side of a page are spread along it in the order their
+  // sources sit, so they fan in instead of piling onto one point.
+  function targets(list) {
+    const groups = {};
+    list.forEach(r => { const k = r.e.to + ':' + r.side; (groups[k] = groups[k] || []).push(r); });
+    Object.values(groups).forEach(g => {
+      const n = N[g[0].e.to], side = g[0].side, horiz = side === 't' || side === 'b';
+      g.sort((a, b) => horiz ? a.s.x - b.s.x : a.s.y - b.s.y);
+      g.forEach((r, i) => {
+        const t = g.length === 1 ? 0.5 : 0.2 + 0.6 * (i / (g.length - 1));
+        if (horiz) r.t = { x: n.x + n.w * t, y: side === 't' ? n.y : n.y + n.h };
+        else {
+          const span = Math.min(n.h, n.w * 2.2);
+          r.t = { x: side === 'l' ? n.x : n.x + n.w, y: n.y + span * (0.18 + 0.64 * t) };
+        }
+      });
+    });
+  }
+  // A cubic that leaves the spot heading toward the target and arrives square
+  // to the target's side, so the head always points INTO the page.
+  function curve(s, t, side) {
+    const dx = t.x - s.x, dy = t.y - s.y, dist = Math.hypot(dx, dy);
+    const d = Math.max(60, Math.min(700, dist * 0.42));
+    // Leave SIDEWAYS toward the target (or up, if it sits right above) — never down
+    // through the page's own nav bar.
+    const ns = (dy < 0 && Math.abs(dy) > 2 * Math.abs(dx)) ? [0, -1] : [Math.sign(dx) || 1, 0];
+    const nt = NORM[side];
+    return [s, { x: s.x + ns[0] * d, y: s.y + ns[1] * d }, { x: t.x + nt[0] * d, y: t.y + nt[1] * d }, t];
+  }
+  const bez = (p, u) => {
+    const a = 1 - u;
+    return { x: a*a*a*p[0].x + 3*a*a*u*p[1].x + 3*a*u*u*p[2].x + u*u*u*p[3].x, y: a*a*a*p[0].y + 3*a*a*u*p[1].y + 3*a*u*u*p[2].y + u*u*u*p[3].y };
+  };
+  const dStr = p => 'M' + sx(p[0].x) + ' ' + sy(p[0].y) + ' C' + sx(p[1].x) + ' ' + sy(p[1].y) + ' ' + sx(p[2].x) + ' ' + sy(p[2].y) + ' ' + sx(p[3].x) + ' ' + sy(p[3].y);
+
+  // ── Drawing (screen space, so lines and heads stay crisp at any zoom) ──
+  let ov = null;   // a drag in progress overrides one edge: {id, src?, to?, tpt?, side?}
+  function draw() {
+    const rows = E.map(e => {
+      const o = ov && ov.id === e.id ? ov : null;
+      const s = srcPt(e, o);
+      const to = o && o.to ? o.to : e.to;
+      return { e: Object.assign({}, e, { to }), s, side: sideOf(N[to], s) };
+    });
+    targets(rows);
+    const lit = hotSet();
+    const ah = Math.max(3.5, Math.min(7, V.k * 18));   // head size follows zoom: small at the overview, full size close up
+    ['ah', 'ah-sel'].forEach((id, i) => { const m = $(id); m.setAttribute('markerWidth', ah + i); m.setAttribute('markerHeight', ah + i); });
+    gE.innerHTML = '';
+    /* LAYERING (Eric: "the lines need to be behind some screens but on top of
+       the one that is eventually getting to"). An arrow shows over its OWN two
+       pages — the one it leaves and the one it lands on — and over the empty
+       board, and goes UNDER every other page it crosses: a mask per arrow with
+       a hole for each card that is neither end. Screen space, so the holes
+       follow pan and zoom; rx matches the card's 46px corner. */
+    const masks = $('masks'); masks.innerHTML = '';
+    const gU = $('unders'); gU.innerHTML = '';
+    const R = 46 * V.k, big = { x: -1e5, y: -1e5, w: 2e5, h: 2e5 };
+    let labels = '';
+    rows.forEach(r => {
+      if (ov && ov.id === r.e.id && ov.tpt) { r.t = ov.tpt; r.side = ov.side || r.side; }
+      const p = curve(r.s, r.t, r.side), d = dStr(p);
+      const isSel = sel === r.e.id, isHot = lit && (lit.has(r.e.from) || lit.has(r.e.to));
+      const mid = 'm-' + r.e.id, m = mk('mask', { id: mid, maskUnits: 'userSpaceOnUse', x: big.x, y: big.y, width: big.w, height: big.h });
+      m.appendChild(mk('rect', { x: big.x, y: big.y, width: big.w, height: big.h, fill: '#fff' }));
+      order.forEach(id => {
+        if (id === r.e.from || id === r.e.to) return;
+        const n = N[id];
+        m.appendChild(mk('rect', { x: sx(n.x), y: sy(n.y), width: n.w * V.k, height: n.h * V.k, rx: R, fill: '#000' }));
+      });
+      masks.appendChild(m);
+      const g = mk('g', { 'data-id': r.e.id, mask: 'url(#' + mid + ')', class: (isSel ? 'sel ' : '') + (isHot ? 'hot ' : '') + (lit && !isHot && !isSel ? 'dim' : '') });
+      g.appendChild(mk('path', { class: 'halo', d }));
+      g.appendChild(mk('path', { class: 'w', d, 'marker-end': isSel ? 'url(#ah-sel)' : 'url(#ah)' }));
+      g.appendChild(mk('path', { class: 'hit', d, 'data-act': 'pick' }));
+      g.appendChild(mk('circle', { class: 'dot', cx: sx(r.s.x), cy: sy(r.s.y), r: isSel ? 4.5 : 3.5, 'data-act': 'src' }));
+      g.appendChild(mk('circle', { class: 'head', cx: sx(r.t.x), cy: sy(r.t.y), r: 9, 'data-act': 'tgt' }));
+      gE.appendChild(g);
+      gU.appendChild(mk('path', { class: 'under' + (isHot || isSel ? ' hot' : (lit ? ' dim' : '')), d }));
+      if (r.e.label && (showAll || isSel || isHot)) {
+        const m = bez(p, 0.5);
+        labels += '<div class="lb' + (isSel ? ' is-sel' : '') + '" style="left:' + sx(m.x) + 'px;top:' + sy(m.y) + 'px">' + esc(r.e.label) + '</div>';
+      }
+    });
+    // Page ↔ its full-length view: a dashed tie, no head — they are one page.
+    gP.innerHTML = '';
+    PAIRS.forEach(([a, b]) => {
+      const A = N[a], B = N[b]; if (!A || !B) return;
+      let p, q;
+      if (B.y >= A.y + A.h - 1) { p = { x: A.x + A.w / 2, y: A.y + A.h }; q = { x: B.x + B.w / 2, y: B.y }; }
+      else if (B.y + B.h <= A.y + 1) { p = { x: A.x + A.w / 2, y: A.y }; q = { x: B.x + B.w / 2, y: B.y + B.h }; }
+      else { const r = B.x > A.x; p = { x: r ? A.x + A.w : A.x, y: A.y + A.h / 2 }; q = { x: r ? B.x : B.x + B.w, y: B.y + Math.min(B.h, A.h) / 2 }; }
+      gP.appendChild(mk('path', { class: 'pair', d: 'M' + sx(p.x) + ' ' + sy(p.y) + ' L' + sx(q.x) + ' ' + sy(q.y) }));
+    });
+    // Page names, in screen space. Their size follows the zoom so a name stays in
+    // proportion to its card: ~7% of the card's width, 5px to 11px.
+    tags.style.setProperty('--nm-size', Math.max(5, Math.min(11, 393 * V.k * 0.07)).toFixed(2) + 'px');
+    let names = '';
+    order.forEach(id => {
+      const n = N[id];
+      names += '<div class="nm' + (lit && lit.has(id) ? ' is-hot' : '') + '" style="left:' + sx(n.x) + 'px;top:' + sy(n.y) + 'px">' + esc(n.name) + '</div>';
+    });
+    tags.innerHTML = names + labels;
+  }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // Hovering a page lights it, its full-length twin, and every arrow touching either.
+  function twin(id) { const p = PAIRS.find(([a, b]) => a === id || b === id); return p ? (p[0] === id ? p[1] : p[0]) : null; }
+  function hotSet() {
+    if (!hot) return null;
+    const s = new Set([hot]); const tw = twin(hot); if (tw) s.add(tw);
+    return s;
+  }
+  function setHot(id) {
+    hot = id;
+    const lit = hotSet();
+    order.forEach(k => {
+      const touches = lit && E.some(e => (lit.has(e.from) && e.to === k) || (lit.has(e.to) && e.from === k));
+      cardEl[k].classList.toggle('is-hot', !!(lit && lit.has(k)));
+      cardEl[k].classList.toggle('is-near', !!touches && !(lit && lit.has(k)));
+    });
+    draw();
+  }
+
+  // ── Selection ──────────────────────────────────────────────
+  function select(id) {
+    sel = id;
+    const e = E.find(x => x.id === id), info = $('info');
+    if (!e) { info.classList.remove('is-on'); draw(); return; }
+    $('info-ft').innerHTML = '<b>' + esc(N[e.from].name) + '</b> → <b>' + esc(N[e.to].name) + '</b>';
+    $('info-lbl').value = e.label || '';
+    info.classList.add('is-on');
+    draw();
+  }
+  $('info-lbl').addEventListener('input', ev => { const e = E.find(x => x.id === sel); if (e) { e.label = ev.target.value; draw(); save(); } });
+  $('info-lbl').addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === 'Escape') ev.target.blur(); ev.stopPropagation(); });
+  function del() { if (!sel) return; E = E.filter(e => e.id !== sel); select(null); save(); note('Arrow deleted'); }
+  $('info-del').addEventListener('click', del);
+
+  // ── Pointer ────────────────────────────────────────────────
+  let drag = null;
+  function cardAt(cx, cy, skip) {
+    const p = toWorld(cx, cy);
+    for (let i = order.length - 1; i >= 0; i--) {
+      const n = N[order[i]];
+      if (order[i] !== skip && p.x >= n.x && p.x <= n.x + n.w && p.y >= n.y && p.y <= n.y + n.h) return n;
+    }
+    return null;
+  }
+  function dropMark(id) { order.forEach(k => cardEl[k].classList.toggle('is-drop', k === id)); }
+  function toFront(id) { const i = order.indexOf(id); order.splice(i, 1); order.push(id); world.appendChild(cardEl[id]); }
+
+  // Arrow parts are SVG over the board, so they get the first word. The
+  // drag is followed on WINDOW: draw() rebuilds the arrows every frame, which
+  // would throw away a pointer capture held by the dot being dragged.
+  $('wires').addEventListener('pointerdown', ev => {
+    const act = ev.target.dataset && ev.target.dataset.act; if (!act) return;
+    const id = ev.target.closest('g').dataset.id; ev.stopPropagation(); ev.preventDefault();
+    select(id);
+    if (act === 'pick') return;
+    drag = { kind: act, id, moved: false };
+    addEventListener('pointermove', wireMove);
+    addEventListener('pointerup', wireUp, { once: true });
+  });
+  function wireMove(ev) {
+    if (!drag) return;
+    drag.moved = true;
+    const p = toWorld(ev.clientX, ev.clientY), e = E.find(x => x.id === drag.id);
+    if (drag.kind === 'src') {
+      ov = { id: drag.id, src: p };
+      const c = cardAt(ev.clientX, ev.clientY); dropMark(c ? c.id : null);
+    } else {
+      const c = cardAt(ev.clientX, ev.clientY, e.from); dropMark(c ? c.id : null);
+      if (c) ov = { id: drag.id, to: c.id };
+      else {
+        const s = srcPt(e);
+        const side = Math.abs(p.x - s.x) > Math.abs(p.y - s.y) ? (p.x > s.x ? 'l' : 'r') : (p.y > s.y ? 't' : 'b');
+        ov = { id: drag.id, tpt: p, side };
+      }
+    }
+    draw();
+  }
+  function wireUp(ev) {
+    removeEventListener('pointermove', wireMove);
+    if (!drag) return;
+    const e = E.find(x => x.id === drag.id);
+    if (drag.moved) {
+      if (drag.kind === 'src') {
+        const c = cardAt(ev.clientX, ev.clientY);
+        if (c && c.id !== e.to) { const p = toWorld(ev.clientX, ev.clientY); e.from = c.id; e.fx = +((p.x - c.x) / c.w).toFixed(3); e.fy = +((p.y - c.y) / c.h).toFixed(3); save(); }
+      } else {
+        const c = cardAt(ev.clientX, ev.clientY, e.from);
+        if (c) { e.to = c.id; save(); }
+      }
+    }
+    drag = null; ov = null; dropMark(null); select(e.id);
+  }
+
+  stage.addEventListener('pointerdown', ev => {
+    if (ev.button !== 0 && ev.button !== 1) return;
+    const card = ev.target.closest('.card');
+    stage.setPointerCapture(ev.pointerId);
+    if (card && (linkMode || ev.altKey)) {
+      const id = card.dataset.id, n = N[id], p = toWorld(ev.clientX, ev.clientY);
+      drag = { kind: 'link', from: id, fx: (p.x - n.x) / n.w, fy: (p.y - n.y) / n.h, sx: ev.clientX, sy: ev.clientY };
+      return;
+    }
+    if (card && ev.button === 0) {
+      const id = card.dataset.id; toFront(id);
+      drag = { kind: 'card', id, ox: N[id].x, oy: N[id].y, sx: ev.clientX, sy: ev.clientY, moved: false };
+      return;
+    }
+    drag = { kind: 'pan', ox: V.x, oy: V.y, sx: ev.clientX, sy: ev.clientY, moved: false };
+    stage.classList.add('is-panning');
+  });
+  stage.addEventListener('pointermove', ev => {
+    if (!drag) return;
+    const dx = ev.clientX - drag.sx, dy = ev.clientY - drag.sy;
+    if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+    if (drag.kind === 'pan') { V.x = drag.ox + dx; V.y = drag.oy + dy; applyView(); }
+    else if (drag.kind === 'card') { const n = N[drag.id]; n.x = drag.ox + dx / V.k; n.y = drag.oy + dy / V.k; place(drag.id); draw(); }
+    else if (drag.kind === 'link') {
+      const n = N[drag.from], s = { x: n.x + drag.fx * n.w, y: n.y + drag.fy * n.h };
+      const c = cardAt(ev.clientX, ev.clientY, drag.from); dropMark(c ? c.id : null);
+      ghost.setAttribute('d', 'M' + sx(s.x) + ' ' + sy(s.y) + ' L' + ev.clientX + ' ' + ev.clientY);
+    }
+  });
+  stage.addEventListener('pointerup', ev => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    stage.classList.remove('is-panning');
+    if (d.kind === 'pan') { if (!d.moved) select(null); save(); }
+    else if (d.kind === 'card') { save(); }
+    else if (d.kind === 'link') {
+      ghost.setAttribute('d', ''); dropMark(null);
+      const c = cardAt(ev.clientX, ev.clientY, d.from);
+      if (c) {
+        const id = 'e' + Date.now().toString(36);
+        E.push({ id, from: d.from, fx: +d.fx.toFixed(3), fy: +d.fy.toFixed(3), to: c.id, label: '' });
+        save(); select(id); setTimeout(() => $('info-lbl').focus(), 0);
+        note('Arrow added — give it a label');
+      }
+    }
+  });
+  stage.addEventListener('wheel', ev => {
+    ev.preventDefault();
+    const k = Math.max(0.03, Math.min(2.5, V.k * Math.exp(-ev.deltaY * (ev.ctrlKey ? 0.01 : 0.0016))));
+    const p = toWorld(ev.clientX, ev.clientY);
+    V.k = k; V.x = ev.clientX - p.x * k; V.y = ev.clientY - p.y * k;
+    applyView(); save();
+  }, { passive: false });
+
+  // ── Toolbar ────────────────────────────────────────────────
+  function fit(ids) {
+    const list = (ids || order).map(id => N[id]);
+    const x0 = Math.min(...list.map(n => n.x)), y0 = Math.min(...list.map(n => n.y));
+    const x1 = Math.max(...list.map(n => n.x + n.w)), y1 = Math.max(...list.map(n => n.y + n.h));
+    const W = innerWidth, H = innerHeight - 60;
+    V.k = Math.min(2.5, Math.min(W / (x1 - x0), H / (y1 - y0)) * 0.9);
+    V.x = (W - (x1 - x0) * V.k) / 2 - x0 * V.k;
+    V.y = 50 + (H - (y1 - y0) * V.k) / 2 - y0 * V.k;
+    applyView(); save();
+  }
+  let noteT = 0;
+  function note(m) { const el = $('note'); el.textContent = m; el.classList.add('is-on'); clearTimeout(noteT); noteT = setTimeout(() => el.classList.remove('is-on'), 2600); }
+  $('b-fit').onclick = () => fit();
+  $('b-labels').onclick = () => { showAll = !showAll; $('b-labels').classList.toggle('on', showAll); draw(); };
+  $('b-link').onclick = () => { linkMode = !linkMode; $('b-link').classList.toggle('on', linkMode); stage.classList.toggle('is-linking', linkMode); };
+  $('b-pages').onclick = () => $('pages').classList.toggle('is-on');
+  $('pages').addEventListener('click', ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    const id = b.dataset.id, tw = twin(id);
+    fit(tw ? [id, tw] : [id]); setHot(id); setTimeout(() => { if (hot === id) setHot(null); }, 1600);
+    $('pages').classList.remove('is-on');
+  });
+  let resetArm = 0;
+  $('b-reset').onclick = () => {
+    const b = $('b-reset');
+    if (Date.now() - resetArm > 2500) { resetArm = Date.now(); b.textContent = 'Sure? click again'; setTimeout(() => b.textContent = 'Reset', 2500); return; }
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    location.reload();
+  };
+  // The switch: one link per plan, so the board reloads clean on it.
+  $('plans').innerHTML = Object.keys(PLANS).map(k => '<a class="b' + (k === PLAN ? ' on' : '') + '" href="?plan=' + k + '">' + esc(PLANS[k].name || k) + '</a>').join('');
+  $('b-export').onclick = () => {
+    const day = new Date().toISOString().slice(0, 10);
+    let txt;
+    if (PLAN === 'figma') {
+      const nodes = order.map(id => { const n = N[id]; return { id, name: n.name, img: n.img, x: Math.round(n.x * 10) / 10, y: Math.round(n.y * 10) / 10, w: n.w, h: n.h }; });
+      txt = '/* Exported from flow.html ' + day + ' - paste over flow/flow-data.js to bake it in. */\nwindow.FLOW_DATA = ' +
+        JSON.stringify({ nodes, edges: E, pairs: PAIRS }, null, 1) + ';\n';
+    } else {
+      const pos = {}; order.forEach(id => pos[id] = [Math.round(N[id].x * 10) / 10, Math.round(N[id].y * 10) / 10]);
+      txt = '/* Exported from flow.html ' + day + ' - paste over flow/' + PLAN + '.js to bake it in. */\nwindow.FLOW_PLANS = window.FLOW_PLANS || {};\nwindow.FLOW_PLANS[' + JSON.stringify(PLAN) + '] = ' +
+        JSON.stringify({ name: P0.name || PLAN, pos, edges: E }, null, 1) + ';\n';
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(() => note('Copied the board — paste it to Claude to bake it in'), () => note('Couldn’t copy'));
+    else note('No clipboard here — open it on localhost');
+  };
+  addEventListener('keydown', ev => {
+    if (ev.target.tagName === 'INPUT') return;
+    if ((ev.key === 'Delete' || ev.key === 'Backspace') && sel) { ev.preventDefault(); del(); }
+    else if (ev.key === 'Escape') { select(null); if (linkMode) $('b-link').click(); $('pages').classList.remove('is-on'); }
+    else if (ev.key === 'f' || ev.key === 'F') fit();
+    else if (ev.key === 'l' || ev.key === 'L') $('b-labels').click();
+  });
+  addEventListener('resize', draw);
+
+  const had = load();
+  buildCards();
+  if (had) applyView(); else fit();
+})();
+</script>
+</body>
+</html>
