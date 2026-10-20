@@ -8073,6 +8073,8 @@ window.navigate = function(targetId, direction) {
     content.appendChild(newEl);
     requestAnimationFrame(() => {
       if (newEl.classList.contains('s-home-v3')) populateHomeData(newEl);
+      // Sign-up lands here in place (account.js → obStart); without this no step panel is switched on.
+      if (newEl.classList.contains('s-onboarding')) obInit(newEl);
       applyFilletMasks();
     });
 
@@ -9856,7 +9858,7 @@ function obSyncOne(root) {
 
   root.querySelectorAll('.ob-panel').forEach(p => p.classList.toggle('ob-panel--on', +p.dataset.step === OB.step));
 
-  const back = root.querySelector('.ob-back'); if (back) back.style.visibility = num <= 1 ? 'hidden' : 'visible';
+  const back = root.querySelector('.ob-back'); if (back) back.style.visibility = 'visible';   // csharpuserlive: step 1's Back = sign out
 
   const ui = root.querySelector('.ob-user-input');
   if (ui && document.activeElement !== ui && ui.value !== OB.username) ui.value = OB.username;
@@ -11277,7 +11279,8 @@ window.obNext = function (skip) {
 window.obBack = function () {
   const active = obActiveSteps();
   const i = active.indexOf(OB.step);
-  if (i <= 0) { navigate('auth'); return; }
+  // csharpuserlive: Back from the username step signs out and returns to the login screen (a mistyped login ID).
+  if (i <= 0) { if (window.sdSignOut) sdSignOut(); else navigate('auth'); return; }
   OB.step = active[i - 1];
   obSync();
   obScrollTop();
