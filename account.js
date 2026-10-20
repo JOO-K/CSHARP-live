@@ -362,11 +362,38 @@
               });
               return;
             }
+            // The handle is CLAIMED here, not at the end: once you have an
+            // @username the account is set up, so leaving partway through and
+            // logging in again goes straight to the app. The rest of the wizard
+            // is a first-visit extra (its answers are saved by obFinish).
+            if (!(await claimHandle(OB.username))) return;
           }
         }
         return _next.apply(this, arguments);
       };
       window.obNext._acc = true;
+    }
+
+    async function claimHandle(name) {
+      const btns = [...document.querySelectorAll('.s-onboarding .ob-next')];
+      btns.forEach(b => { b.disabled = true; b.textContent = 'Saving…'; });
+      const profile = Object.assign({}, (acc() || {}).profile, { name, handle: name });
+      const { error } = await sb.from('profiles').update({
+        username: name, onboarded: true, profile, updated_at: new Date().toISOString(),
+      }).eq('id', UID);
+      btns.forEach(b => { b.disabled = false; b.textContent = 'Continue'; });
+      if (error) {
+        if (error.code === '23505') {
+          document.querySelectorAll('.s-onboarding .ob-user-hint').forEach(h => {
+            h.classList.remove('ob-user-hint--ok'); h.textContent = '@' + name + ' is taken — try another';
+          });
+        } else toast('Couldn’t save your username — check your connection and try again', true);
+        return false;
+      }
+      const a = acc() || {};
+      saveAcc(Object.assign(a, { username: name, onboarded: true, profile }));
+      applyProfile(acc());
+      return true;
     }
 
     const _finish = window.obFinish;
