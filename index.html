@@ -5,6 +5,21 @@
        (sdSetViewMode, app.js). Set here so no real cover paints first. -->
   <script>/* csharpuserlive: real images by default; wireframe only if chosen */ try { if (localStorage.getItem('sd-view-mode') === 'wire') document.documentElement.classList.add('sd-wire'); } catch (e) {}</script>
   <meta charset="UTF-8">
+  <!-- STALE-PAGE GUARD (csharpuserlive): GitHub Pages lets a phone keep this
+       page for 10 minutes (longer in a home-screen app), so after a push it can
+       run the OLD scripts. version.txt is fetched uncached; if it names a newer
+       build, the page reloads at ?b=<build> — a URL the phone has never cached.
+       ⚠ Bump SD_BUILD here AND version.txt together on every push. -->
+  <script>
+    window.SD_BUILD = '8';
+    fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
+      v = (v || '').trim();
+      if (!v || v === window.SD_BUILD) return;
+      const u = new URL(location.href);
+      if (u.searchParams.get('b') === v) return;   // already tried — never loop
+      u.searchParams.set('b', v); location.replace(u.toString());
+    }).catch(() => {});
+  </script>
   <!-- No zoom, like the app (0.20, 2026-10-13): maximum-scale=1 also stops iOS zooming into a text box under 16px on focus. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
   <title>Spindeck — Mockup (review-only)</title>

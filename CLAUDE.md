@@ -31,6 +31,13 @@
 > - ⚠ Session storage key is `spindeck-auth`, not Supabase's default, so
 >   sessions.html's viewer login can't leak into the app.
 > - `versions.js` is gone from this copy (there are no versions here).
+> - ⚠ **On every push bump `SD_BUILD` (index.html head) AND `version.txt`
+>   together.** Pages caches index.html for 10 min on phones; the guard reloads
+>   a stale page at `?b=<build>` (a never-cached URL) when version.txt is newer.
+> - Live: https://joo-k.github.io/CSHARP-live/ (repo JOO-K/CSHARP-live).
+>   Onboarding has no service steps; the @username is claimed (and the account
+>   marked onboarded) on step 1's Continue; your own profile / You tab list only
+>   real reviews; images are on by default; step 7 takes a profile photo.
 
 # Spindeck — Music Review App Mockup
 
