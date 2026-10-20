@@ -12446,6 +12446,8 @@ window.profPick = function (name) {
   const T = profFavTarget();
   if (!T.favs) T.favs = [];
   T.favs[_profSlot] = name;
+  // Straight onto the profile (not the Edit form's draft) → save it to the account.
+  if (!window.PFEDIT && window.sdPushProfile) sdPushProfile();
   profAfterPick();
 };
 /* Pin = set this slot to the album; picking the one already there clears it,
@@ -13053,6 +13055,15 @@ window.profPicksTab = function (btn) {
     b.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   sec.querySelectorAll('.prof-picks-pane').forEach(p => { p.hidden = p.dataset.k !== k; });
+};
+/* Show more: the next PROF_PICK_SHOW rows of that list; the button goes once
+   nothing is held back. In place, like the tabs. */
+window.profPicksMore = function (btn) {
+  const pane = btn.closest('.prof-picks-pane');
+  if (!pane) return;
+  const held = pane.querySelectorAll('.prof-song--more');
+  Array.prototype.slice.call(held, 0, PROF_PICK_SHOW).forEach(r => r.classList.remove('prof-song--more'));
+  if (held.length <= PROF_PICK_SHOW) btn.remove();
 };
 /* A row opens its album. Found by name + artist (a title alone collides), and
    a record that has since left ARCHIVE — the rec pool is re-dealt each load —

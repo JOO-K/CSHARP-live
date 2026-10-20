@@ -35,6 +35,7 @@
 >   together.** Pages caches index.html for 10 min on phones; the guard reloads
 >   a stale page at `?b=<build>` (a never-cached URL) when version.txt is newer.
 > - **Tags = festivals** (`fests.js`): your profile shows only tags you added via the "+ Tag" pill (`fest:<slug>:<year>`, max 5, years list only editions that ran); friends keep seeded tags. `sdPushProfile` (account.js) saves profile changes made outside Edit profile.
+> - **YOUR profile has no filler (2026-10-20)**: `applyProfile` (account.js) wipes every dealt field (bio, pic, tags, favs, favSongs, stats…) before applying the account's own, so a fresh account is empty. Stats: following/followers 0, score = your posted reviews × 20. Fav songs / Fav albums = ONLY what you hearted (`song::` / `album::` drafts with `fav`) — `P.favSongs` / `P.favs` are not read there, because saves before this fix stored the dealt demo profile into accounts. Each list shows 6 rows then a Show more (`PROF_PICK_SHOW`, `profPicksMore`); your lists are uncapped. Listen later has no seeded top-up; a fav disc picked on the profile saves via `sdPushProfile`. Other people stay generated.
 > - Live: https://joo-k.github.io/CSHARP-live/ (repo JOO-K/CSHARP-live).
 >   Onboarding has no service steps; the @username is claimed (and the account
 >   marked onboarded) on step 1's Continue; your own profile / You tab list only

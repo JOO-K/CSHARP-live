@@ -93,6 +93,15 @@
   function applyProfile(a) {
     if (!a || !window.PROFILE) return;
     const p = a.profile || {};
+    /* Your profile is REAL: nothing the persona / randomizeProfile dealt
+       survives — empty until you fill it. Only other people are generated. */
+    Object.assign(window.PROFILE, {
+      bio: '', location: '', occupation: '', pic: '', tags: [], favs: [], favArtists: [],
+      favSongs: [], socials: {}, playlistNames: [], playlistCovers: [], recent: [],
+      reviews: 0, playlists: 0, followers: 0, following: 0,
+    });
+    delete window.PROFILE.pins;   // unset = your two newest reviews, which are real
+    delete window.PROFILE.skin;
     PROFILE_FIELDS.forEach(f => { if (p[f] !== undefined) window.PROFILE[f] = p[f]; });
     if (a.username && !p.handle) window.PROFILE.handle = a.username;
     if (a.username && !p.name) window.PROFILE.name = a.username;
@@ -110,7 +119,7 @@
     if (typeof orig !== 'function') return;
     window[fn] = function (arg) {
       const r = orig.apply(this, arguments);
-      if (UID && !(fn === 'randomizeProfile' && arg)) applyProfile(acc());
+      if ((UID || acc()) && !(fn === 'randomizeProfile' && arg)) applyProfile(acc());
       return r;
     };
   });

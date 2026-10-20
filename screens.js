@@ -1965,6 +1965,11 @@ function profLikes(P) {
 }
 
 function profScore(P) {
+  // csharpuserlive: YOUR score is only the reviews you posted (likes aren't real yet).
+  if (!window.PROFILE_GUEST) {
+    const own = profMyLog().length * PROF_PTS_WRITE;
+    return window.fmtRc ? fmtRc(own) : String(own);
+  }
   const pts = (P.reviews || 0) * PROF_PTS_WRITE + profLikes(P) * PROF_PTS_LIKE;
   return window.fmtRc ? fmtRc(pts) : String(pts);
 }
@@ -2104,6 +2109,7 @@ function profPinsHtml(P) {
    three lists are in the markup. */
 const PROF_PICK_ROWS = 8;
 const PROF_PICK_LATER = 5;
+const PROF_PICK_SHOW = 6;   // rows a list shows before its Show more (profPicksMore, app.js)
 function profPicksLists(P) {
   const A = window.ARCHIVE || [];
   const findAlb = name => A.find(a => a.album === name);
@@ -2112,11 +2118,36 @@ function profPicksLists(P) {
   const h = (...a) => profMix(raw(...a));
   const own = !window.PROFILE_GUEST;
 
-  const songs = (P.favSongs || []).slice(0, 5).map(s => {
+  const songs = (P.favSongs || []).slice(0, 5).filter(Boolean).map(s => {
     const a = findAlb(s.album);
     return { kind: 'song', title: s.title, sub: `${s.album} · ${s.artist}`,
              image: a ? a.image : '', album: s.album, artist: s.artist };
   });
+  /* csharpuserlive: on YOUR profile Fav songs is ONLY the songs you hearted
+     (song::title::album drafts with fav), newest first. P.favSongs is not read:
+     before 2026-10-20 a save stored the dealt demo profile into the account, so
+     an account's favSongs can still hold songs nobody hearted. */
+  if (own) songs.length = 0;
+  if (own && typeof logDrafts === 'function') {
+    const all = logDrafts();
+    const liked = Object.keys(all)
+      .filter(key => key.indexOf('song::') === 0 && all[key] && all[key].fav)
+      .sort((x, y) => (all[y].updated || 0) - (all[x].updated || 0))
+      .map(key => {
+        const [, title, album] = key.split('::');
+        const a = findAlb(album);
+        const artist = a ? a.artist : '';
+        return { kind: 'song', title, sub: album + (artist ? ` · ${artist}` : ''),
+                 image: a ? a.image : (all[key].image || ''), album, artist };
+      });
+    const seenS = {};
+    const merged = liked.concat(songs).filter(r => {
+      const k = r.title + '::' + r.album;
+      if (seenS[k]) return false;
+      seenS[k] = 1; return true;
+    });
+    songs.length = 0; merged.forEach(r => songs.push(r));
+  }
 
   /* Your own drafts, newest first. Albums only — a song's draft is about a track. */
   const mine = k => {
@@ -2150,7 +2181,8 @@ function profPicksLists(P) {
 
   const later = [], seenT = {};
   mine('later').forEach(r => push(later, seenT, r));
-  for (let i = 0; i < A.length * 2 && later.length < PROF_PICK_LATER && A.length; i++) {
+  // The seeded top-up is for other people; your queue is only what you queued.
+  for (let i = 0; !own && i < A.length * 2 && later.length < PROF_PICK_LATER && A.length; i++) {
     const a = A[h(seed, 'lt', i) % A.length];
     if (seenL[a.album]) continue;               // not something they already listened to
     push(later, seenT, { kind: 'album', title: a.album, artist: a.artist, album: a.album,
@@ -2160,13 +2192,15 @@ function profPicksLists(P) {
      on an album, newest first, then the profile's five favourites. */
   const albums = [], seenA = {};
   mine('fav').forEach(r => push(albums, seenA, r));
-  (P.favs || []).forEach(name => {
+  // Your Fav albums are only the ones you hearted (see the songs note above).
+  if (!own) (P.favs || []).forEach(name => {
     const a = findAlb(name);
     if (a) push(albums, seenA, { kind: 'album', title: a.album, artist: a.artist, album: a.album,
                                  sub: a.artist + (a.year ? ` · ${a.year}` : ''), image: a.image });
   });
-  return { songs, albums: albums.slice(0, PROF_PICK_ROWS),
-           listened: listened.slice(0, PROF_PICK_ROWS), later: later.slice(0, PROF_PICK_ROWS) };
+  // Your own lists are whole (profPicksHtml shows PROF_PICK_SHOW, then Show more).
+  const cap = l => own ? l : l.slice(0, PROF_PICK_ROWS);
+  return { songs: cap(songs), albums: cap(albums), listened: cap(listened), later: cap(later) };
 }
 
 const PROF_PICK_TABS = [
@@ -2191,8 +2225,8 @@ function profPicksHtml(P) {
     return r.rating ? `<span class="prof-song-score">${r.rating}</span>`
                     : `<span class="prof-song-play prof-song-play--dot">${ico.ear || ''}</span>`;
   };
-  const row = (r, k) => `
-                <button class="prof-song" data-alb="${at(r.album)}" data-artist="${at(r.artist)}" onclick="profPickOpen(this)">
+  const row = (r, k, i) => `
+                <button class="prof-song${i >= PROF_PICK_SHOW ? ' prof-song--more' : ''}" data-alb="${at(r.album)}" data-artist="${at(r.artist)}" onclick="profPickOpen(this)">
                   <span class="prof-song-art" style="background-image:url('${r.image}')"></span>
                   <span class="prof-song-meta">
                     <span class="prof-song-title">${at(r.title)}</span>
@@ -2207,7 +2241,10 @@ function profPicksHtml(P) {
                 <button class="prof-picks-tab${k === first ? ' active' : ''}" role="tab" aria-selected="${k === first}" data-k="${k}" onclick="profPicksTab(this)">${label}</button>`).join('')}
               </div>${PROF_PICK_TABS.map(([k, , empty]) => `
               <div class="prof-songs prof-picks-pane" data-k="${k}"${k === first ? '' : ' hidden'}>${
-                L[k].length ? L[k].map(r => row(r, k)).join('') : `<div class="prof-pins-empty">${empty}</div>`}
+                L[k].length ? L[k].map((r, i) => row(r, k, i)).join('')
+                  + (L[k].length > PROF_PICK_SHOW ? `
+                <button class="v3-cmt-seemore prof-picks-more" type="button" onclick="profPicksMore(this)">Show more</button>` : '')
+                : `<div class="prof-pins-empty">${empty}</div>`}
               </div>`).join('')}
             </div>`;
 }

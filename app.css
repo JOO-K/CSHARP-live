@@ -10174,6 +10174,8 @@ body.sd-return .s-home-v3--review .v3-body { animation: rvpIn .34s ease-out back
   padding: 10px 4px; font-family: var(--font-mono); font-size: 9.5px;
   letter-spacing: .04em; color: var(--pf-fg2);
 }
+.prof-song--more { display: none !important; }
+.prof-picks-more { margin-top: 10px; }
 .pfe-pin-q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-main); }
 /* ⚠ One menu per slot, all centred over the rail rather than hung off their own
    disc: only the CENTRED album is actionable, so that is the only place a popup
@@ -12527,6 +12529,7 @@ body.sd-pro .shop-tile--event.is-pro .shop-ev-art { filter: none; opacity: 1; }
 .prof-head .prof-pic {
   position: relative; left: auto; top: auto;
   width: 112px; height: 112px; border-radius: 50%;
+  background-color: rgba(127,127,127,0.18);   /* no photo yet — a real profile can start without one */
   background-size: cover; background-position: center;
   box-shadow: 0 0 0 1px var(--sd-line), 0 10px 26px rgba(0,0,0,0.28);
 }
