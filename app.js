@@ -9794,7 +9794,8 @@ const OB = {
    artists · albums) and before people. ⚠ Steps are IDS, not positions — the
    order is this list, so the new one took the next free id rather than
    renumbering 6 and 7 (which are hard-coded all over the footer and dock). */
-function obActiveSteps() { return OB.service ? [0,1,2,3,4,5,8,6,7] : [0,1,3,4,5,8,6,7]; }
+// csharpuserlive: no streaming-service steps (1 connect, 2 tracking) — there is no real connect yet.
+function obActiveSteps() { return [0,3,4,5,8,6,7]; }
 
 const obEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 // onclick-safe: survives HTML-decode then JS single-quote parse.
