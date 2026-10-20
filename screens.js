@@ -1881,7 +1881,27 @@ const profAgo = d => d < 7   ? d + 'd'
                    : d < 365 ? Math.round(d / 30) + 'mo'
                    :           Math.round(d / 365) + 'y';
 
+/* csharpuserlive: YOUR profile lists only the reviews you actually posted
+   (the committed log drafts, newest first). Friends' profiles keep the seeded
+   history below. */
+function profMyLog() {
+  const drafts = (typeof logDrafts === 'function') ? logDrafts() : {};
+  const A = window.ARCHIVE || [];
+  const ago = t => { const m = Math.max(0, (Date.now() - (t || Date.now())) / 60000);
+    return m < 1 ? 'now' : m < 60 ? Math.round(m) + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : profAgo(Math.round(m / 1440)); };
+  return Object.keys(drafts).map(k => {
+    if (k.indexOf('album::') !== 0) return null;
+    const d = drafts[k] || {};
+    if (!(d.rating > 0 || (d.text || '').trim())) return null;
+    const bits = k.split('::'), snap = d.snap || {};
+    const album = A.find(x => x.album === bits[1] && x.artist === bits[2])
+      || { album: bits[1] || '', artist: bits[2] || '', image: d.image || snap.image || '', year: snap.year || '' };
+    return { album, rating: d.rating || 0, text: (d.text || '').trim(), when: ago(d.updated), at: d.updated || 0, likes: 0, comments: 0 };
+  }).filter(Boolean).sort((a, b) => b.at - a.at);
+}
+
 function profReviewLog(P) {
+  if (!window.PROFILE_GUEST) return profMyLog();
   const A = window.ARCHIVE || [];
   if (!A.length) return [];
   const seed = String(P.handle || P.name || 'you');
@@ -2344,7 +2364,7 @@ function profileHtml(light) {
                  the longest and the one you scroll INTO, not past. -->
             <div class="prof-feed">
               <div class="prof-feed-hd">Review history</div>
-              ${logHtml}
+              ${logHtml || `<div class="prof-pins-empty">No reviews yet — rate an album and it shows up here.</div>`}
             </div>
 
           </div>

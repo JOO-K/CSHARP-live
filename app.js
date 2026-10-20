@@ -4001,6 +4001,7 @@ function popularFeedHtml() {
    ⚠ Keyed `mine::<album>` — the album page's key and the just-posted card's —
    so one review has one thread and one like count on all three surfaces.
    ⚠ `mine: true` so each card carries the PENCIL back into the sheet. */
+const SD_PAD_MINE = false;
 function myReviewsFeedHtml() {
   const drafts = typeof logDrafts === 'function' ? logDrafts() : {};
   const arch = window.ARCHIVE || [];
@@ -4047,7 +4048,8 @@ function myReviewsFeedHtml() {
   // Bare, not window.FB_LONG_REVIEWS - a const is not a window property.
   const longs = (typeof FB_LONG_REVIEWS !== 'undefined' ? FB_LONG_REVIEWS : []).map(x => x.text);
   const texts = longs.concat(quotes);
-  for (let i = 0; out.length < TAB_TARGET && i < TAB_TARGET * 6; i++) {
+  // csharpuserlive: real reviews only — no seeded extras padding the You tab.
+  for (let i = 0; SD_PAD_MINE && out.length < TAB_TARGET && i < TAB_TARGET * 6; i++) {
     if (!arch.length || !texts.length) break;
     const rnd = seedRand('youtab::' + i);
     const album = arch[Math.floor(rnd() * arch.length)];
