@@ -376,7 +376,7 @@
         const btns = [...document.querySelectorAll('.s-onboarding .ob-next')];
         btns.forEach(b => { b.disabled = true; b.textContent = 'Saving…'; });
         const name = OB.username;
-        const profile = Object.assign({}, (acc() || {}).profile, { name, handle: name, bio: '', location: '' });
+        const profile = Object.assign({}, (acc() || {}).profile, { name, handle: name, bio: '', location: '' }, OB.pic ? { pic: OB.pic } : {});
         const { error } = await sb.from('profiles').update({
           username: name, onboarded: true, profile, updated_at: new Date().toISOString(),
           onboarding: { service: OB.service, tracking: OB.tracking, genres: [...OB.genres],

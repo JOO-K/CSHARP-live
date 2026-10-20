@@ -3,7 +3,7 @@
 <head>
   <!-- WIREFRAME MODE (0.13): on unless "Images" was picked in Notifications
        (sdSetViewMode, app.js). Set here so no real cover paints first. -->
-  <script>try { if (localStorage.getItem('sd-view-mode') !== 'images') document.documentElement.classList.add('sd-wire'); } catch (e) { document.documentElement.classList.add('sd-wire'); }</script>
+  <script>/* csharpuserlive: real images by default; wireframe only if chosen */ try { if (localStorage.getItem('sd-view-mode') === 'wire') document.documentElement.classList.add('sd-wire'); } catch (e) {}</script>
   <meta charset="UTF-8">
   <!-- No zoom, like the app (0.20, 2026-10-13): maximum-scale=1 also stops iOS zooming into a text box under 16px on focus. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800;1,9..40,400&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..900&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=SUSE+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=168">
-  <link rel="stylesheet" href="app.css?v=713">
+  <link rel="stylesheet" href="app.css?v=714">
   <link rel="stylesheet" href="roadmap.css?v=6">
 </head>
 <body>
@@ -308,12 +308,12 @@
   <script src="screens.js?v=384"></script>
   <!-- 0.14b: anime.js draws the logo between onboarding and home (sdHomeIntro, end of app.js). -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
-  <script src="app.js?v=459"></script>
+  <script src="app.js?v=460"></script>
   <!-- csharpuserlive: accounts. Supabase's client, then account.js — after
        app.js (it wraps obNext / obFinish / pfeditSave) and before the
        DOMContentLoaded init() that asks it which screen to open on. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="account.js?v=5"></script>
+  <script src="account.js?v=6"></script>
   <!-- Quick share — needs app.js first (computeAlbumColors, albumDraft, shellAlbum). -->
   <script src="share.js?v=15"></script>
   <!-- Roadmap overlay. Independent of the prototype — loads last, touches

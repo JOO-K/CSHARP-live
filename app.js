@@ -9804,7 +9804,7 @@ const obUserValid = () => /^[a-zA-Z0-9_]{4,18}$/.test(OB.username);
 
 // Kick off a fresh signup (from the auth screen).
 window.obStart = function () {
-  OB.step = 0; OB.username = ''; OB.service = null; OB.tracking = null;
+  OB.step = 0; OB.username = ''; OB.service = null; OB.tracking = null; OB.pic = '';
   OB.genres.clear(); OB.artists.clear(); OB.albums.clear(); OB.following.clear();
   OB.q.artists = ''; OB.q.albums = ''; OB.q.review = '';
   OB.genreView = 'list'; OB.genreOpen.clear();
@@ -11230,7 +11230,11 @@ function obRenderProfile(root) {
   const stat = (n, l) => `<div class="ob-stat"><div class="ob-stat-n">${n}</div><div class="ob-stat-l">${l}</div></div>`;
   box.innerHTML = `
     <div class="ob-pf-hero">
-      <div class="ob-pf-av">${obEsc(init)}</div>
+      <label class="ob-pf-av${OB.pic ? ' has-pic' : ''}"${OB.pic ? ` style="background-image:url('${OB.pic}')"` : ''}>
+        ${OB.pic ? '' : obEsc(init)}<span class="ob-pf-av-plus">+</span>
+        <input type="file" accept="image/*" onchange="obPhotoUpload(this)" hidden>
+      </label>
+      <div class="ob-pf-av-lbl" onclick="this.previousElementSibling.querySelector('input').click()">${OB.pic ? 'Change photo' : 'Add a profile photo'}</div>
       <div class="ob-pf-name">@${obEsc(u)}</div>
       <div class="ob-pf-tagline">fresh on Spindeck</div>
       ${svc ? `<div class="ob-pf-badge"><span class="ob-pf-badge-dot"></span>${obEsc(svc)} connected${OB.tracking ? ' · sharing' : ''}</div>` : ''}
@@ -12478,12 +12482,28 @@ window.profPickPhoto = function (src) {
   profFavTarget().pic = src;
   profAfterPick();
 };
+/* csharpuserlive: a phone photo is several MB, and the picture is saved in the
+   account's profile row — so it is cut to a 320px square JPEG (~20-40KB) first. */
+window.sdShrinkImage = function (file, done, size = 320) {
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onload = () => {
+    const s = Math.min(img.naturalWidth, img.naturalHeight);
+    const c = document.createElement('canvas'); c.width = c.height = size;
+    c.getContext('2d').drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, size, size);
+    URL.revokeObjectURL(url);
+    done(c.toDataURL('image/jpeg', 0.82));
+  };
+  img.onerror = () => URL.revokeObjectURL(url);
+  img.src = url;
+};
 window.profPhotoUpload = function (input) {
   const f = input && input.files && input.files[0]; if (!f) return;
   const T = profFavTarget();
-  const fr = new FileReader();
-  fr.onload = () => { T.pic = fr.result; profAfterPick(); };
-  fr.readAsDataURL(f);
+  sdShrinkImage(f, src => { T.pic = src; profAfterPick(); });
+};
+window.obPhotoUpload = function (input) {
+  const f = input && input.files && input.files[0]; if (!f) return;
+  sdShrinkImage(f, src => { OB.pic = src; obSync(); });
 };
 /* ============================================================
    EDIT PROFILE — the customising page behind the card's pencil
