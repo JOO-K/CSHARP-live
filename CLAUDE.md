@@ -34,6 +34,7 @@
 > - ⚠ **On every push bump `SD_BUILD` (index.html head) AND `version.txt`
 >   together.** Pages caches index.html for 10 min on phones; the guard reloads
 >   a stale page at `?b=<build>` (a never-cached URL) when version.txt is newer.
+> - **Tags = festivals** (`fests.js`): your profile shows only tags you added via the "+ Tag" pill (`fest:<slug>:<year>`, max 5, years list only editions that ran); friends keep seeded tags. `sdPushProfile` (account.js) saves profile changes made outside Edit profile.
 > - Live: https://joo-k.github.io/CSHARP-live/ (repo JOO-K/CSHARP-live).
 >   Onboarding has no service steps; the @username is claimed (and the account
 >   marked onboarded) on step 1's Continue; your own profile / You tab list only

@@ -11,7 +11,7 @@
        build, the page reloads at ?b=<build> — a URL the phone has never cached.
        ⚠ Bump SD_BUILD here AND version.txt together on every push. -->
   <script>
-    window.SD_BUILD = '8';
+    window.SD_BUILD = '9';
     fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
       v = (v || '').trim();
       if (!v || v === window.SD_BUILD) return;
@@ -328,7 +328,8 @@
        app.js (it wraps obNext / obFinish / pfeditSave) and before the
        DOMContentLoaded init() that asks it which screen to open on. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="account.js?v=7"></script>
+  <script src="account.js?v=8"></script>
+  <script src="fests.js?v=1"></script>
   <!-- Quick share — needs app.js first (computeAlbumColors, albumDraft, shellAlbum). -->
   <script src="share.js?v=15"></script>
   <!-- Roadmap overlay. Independent of the prototype — loads last, touches

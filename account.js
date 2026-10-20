@@ -426,6 +426,14 @@
       window.obFinish._acc = true;
     }
 
+    // A profile change made outside Edit profile (fests.js's tags) → the account.
+    window.sdPushProfile = function () {
+      if (!UID || !window.PROFILE) return;
+      const p = {}; PROFILE_FIELDS.forEach(f => { if (window.PROFILE[f] !== undefined) p[f] = window.PROFILE[f]; });
+      const a = acc(); if (a) { a.profile = p; saveAcc(a); }
+      markDirty('profile'); flushProfile();
+    };
+
     // Edit profile → the account.
     const _pfSave = window.pfeditSave;
     if (_pfSave && !_pfSave._acc) {
