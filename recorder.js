@@ -120,6 +120,7 @@ const REC_CFG = {
     }, true);
     document.addEventListener('input', e => {
       const el = e.target; if (!(el instanceof Element) || el.closest('#sd-rec-prompt')) return;
+      if (el.type === 'password') return;   // csharpuserlive: never log a password (rrweb masks it in the replay too)
       clearTimeout(inputTimers.get(el));
       inputTimers.set(el, setTimeout(() => {
         const { lbl } = labelOf(el);
@@ -196,8 +197,7 @@ const REC_CFG = {
         <label class="rec-lbl" for="rec-name">What's your name?</label>
         <input class="rec-input" id="rec-name" type="text" autocomplete="name" maxlength="40" placeholder="Your name" required>
         <p class="rec-note">Your taps and the screens you visit are recorded (no camera, no mic) so we can see how the app gets used and improve it. By continuing you approve of this recording.</p>
-        <button class="rec-go" type="submit" value="onboard">Start with onboarding</button>
-        <button class="rec-skip" type="submit" value="skip">Skip onboarding</button>
+        <button class="rec-go" type="submit" value="onboard">Continue</button>
       </form>`;
     document.body.appendChild(ov);
     const inp = ov.querySelector('input');
@@ -208,8 +208,7 @@ const REC_CFG = {
       try { localStorage.setItem(NAME_KEY, name); } catch (err) {}
       ov.remove();
       begin(name);
-      // 0.13: the card's second button skips straight to the app.
-      if (e.submitter && e.submitter.value === 'skip' && window.sdSkipOnboarding) window.sdSkipOnboarding();
+      // (0.13's "Skip onboarding" button is gone in csharpuserlive — onboarding is done once, per account.)
     });
   }
 

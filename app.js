@@ -179,12 +179,15 @@ function init() {
   const spBack = svcSpotifyPending(params);
   if (spBack) { const i = SCREENS.findIndex(s => s.id === 'settings'); if (i !== -1) currentIdx = i; }
   else if (p) { const i = SCREENS.findIndex(s => s.id === p); if (i !== -1) currentIdx = i; }
-  /* 0.13 (Eric, 2026-10-03: "in this mockup we start with onboarding every
-     time"): no ?screen and no ?tools → the first screen is onboarding, and
-     sdAskSkipOnboarding offers the way past it (below). */
+  /* csharpuserlive (2026-10-19): the ACCOUNT decides where the app opens —
+     no account → sign-in, signed in but never onboarded → onboarding, done →
+     home (sdAccountBootScreen, account.js). Onboarding is done once, and
+     there is no skip any more. Without account.js it falls back to 0.13's
+     "always onboarding". */
   else if (!SD_TOOLS) {
-    const ob = SCREENS.findIndex(s => s.id === 'onboarding');
-    if (ob !== -1) { currentIdx = ob; window.SD_BOOT_ONBOARDING = true; }
+    const boot = typeof sdAccountBootScreen === 'function' ? sdAccountBootScreen() : 'onboarding';
+    const i = SCREENS.findIndex(s => s.id === boot);
+    if (i !== -1) { currentIdx = i; window.SD_BOOT_ONBOARDING = boot === 'onboarding'; }
   }
 
   /* Before the first render: the plan decides what some screens are made of
@@ -9901,7 +9904,8 @@ function obSyncFooter(root) {
   const skip = root.querySelector('.ob-skip');
   const next = root.querySelector('.ob-next');
   const step = OB.step;
-  if (skip) skip.style.visibility = 'visible';   // every step (Eric, 2026-09-26: "a skip option at the top for all the onboarding pages for now")
+  // Every step but the username (csharpuserlive: an account needs a handle, so step 0 can't be skipped).
+  if (skip) skip.style.visibility = step === 0 ? 'hidden' : 'visible';
   if (!next) return;
   next.dataset.lbl = step === 7 ? 'Finish' : 'Next';   // the band's small label (::before)
   if (step === 7)      { next.textContent = 'Start exploring';                       next.disabled = false; }
@@ -11261,7 +11265,7 @@ window.obSearch       = function (kind, v) {
 };
 
 window.obNext = function (skip) {
-  if (!skip && OB.step === 0 && !obUserValid()) return;   // username required — unless skipping (the rail's Skip passes true)
+  if (OB.step === 0 && !obUserValid()) return;   // username required, Skip or not (csharpuserlive)
   const active = obActiveSteps();
   const i = active.indexOf(OB.step);
   if (i >= active.length - 1) { obFinish(); return; }
@@ -14033,41 +14037,12 @@ window.sdSetViewMode = function (mode) {
   });
 };
 
-/* ══ SKIP ONBOARDING? (0.13, Eric 2026-10-03) ═══════════════════════════════
-   "we start with onboarding every time but in the first onboarding screen we
-   have a popup that says do u want to skip onboarding, and if they are
-   writing their name for the first time then we can ask them there".
-   The app boots on onboarding (init). A tester typing their name for the
-   first time answers on the name card (recorder.js, SD_REC_WILL_ASK); anyone
-   else gets this card over step 1 once per load. Skip → home. */
-window.sdSkipOnboarding = function () {
-  document.querySelectorAll('.sd-obskip').forEach(o => o.remove());
-  if (typeof navigate === 'function') sdHomeIntro(() => navigate('home'));   // 0.14b: skipping gets the intro too
-};
-function sdAskSkipOnboarding() {
-  if (!window.SD_BOOT_ONBOARDING || window.SD_REC_WILL_ASK) return;
-  const host = [...document.querySelectorAll('.s-onboarding')].find(e => e.offsetParent) || document.querySelector('.s-onboarding');
-  if (!host || host.querySelector('.sd-obskip')) return;
-  const ov = document.createElement('div');
-  ov.className = 'sd-fb sd-obskip';
-  ov.innerHTML = `
-    <div class="sd-fb-card" role="dialog" aria-modal="true" aria-label="Skip onboarding?">
-      <div class="sd-fb-hd"><span class="sd-fb-title">Skip onboarding?</span></div>
-      <p class="sd-obskip-note">You can go straight to the app, or set up your profile and taste first.</p>
-      <button class="sd-fb-send" type="button" data-go="skip">Skip to the app</button>
-      <button class="sd-obskip-stay" type="button" data-go="stay">Go through onboarding</button>
-    </div>`;
-  host.appendChild(ov);
-  ov.addEventListener('click', e => {
-    const b = e.target.closest('[data-go]');
-    if (!b) return;
-    if (b.dataset.go === 'skip') { sdSkipOnboarding(); return; }
-    ov.classList.remove('open'); setTimeout(() => ov.remove(), 200);
-  });
-  requestAnimationFrame(() => ov.classList.add('open'));
-}
-// After the first render has put onboarding on stage.
-document.addEventListener('DOMContentLoaded', () => setTimeout(sdAskSkipOnboarding, 400));
+/* ══ SKIP ONBOARDING? — REMOVED in csharpuserlive (2026-10-19) ═══════════════
+   Eric: "in this new version lets not have this skip onboarding step … u kinda
+   have to go through this process of onboarding at least once". The 0.13 popup
+   (sdAskSkipOnboarding) is gone; an account opens on onboarding until it is
+   done (account.js). sdSkipOnboarding is kept as a no-op for old callers. */
+window.sdSkipOnboarding = function () {};
 
 /* ── THE HOME INTRO (0.14b, 2026-10-12) ────────────────────────────────────
    Eric: "a little transition animation between going from onboarding to

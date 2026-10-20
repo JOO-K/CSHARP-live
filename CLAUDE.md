@@ -5,6 +5,32 @@
 > touches the live csharpuser site. Goal: real accounts (Supabase Auth email code),
 > reviews/profile/taste in Supabase as the source of truth, localStorage only a
 > cache, Spotify connect later. New code goes in account.js, not app.js.
+>
+> ### Accounts (2026-10-19) — `account.js`, `tools/supabase-accounts.sql`
+> - **Boot** (`sdAccountBootScreen`, read by `init()`): no account → `auth`;
+>   signed in, not onboarded → `onboarding`; onboarded → `home`. The 0.13
+>   skip-onboarding popup, the recorder card's "Skip onboarding" and step 0's
+>   Skip are gone — onboarding happens once per account.
+> - **Sign-in** is the old `auth` screen made real (`authHtml` renders from
+>   `window.AUTHUI`): LOGIN ID + PASSWORD, 5+ chars each, no email (Eric:
+>   "super simple, my friends are testing"). The login ID is ONLY for logging
+>   in — the @username is picked on onboarding step 1. Create account sits
+>   above Log in. A failed log-in asks `login_exists` (RPC) so it can say
+>   "no account under that login ID" vs "wrong password". A login ID becomes
+>   `name@users.spindeck.app` for Supabase ("Confirm email" must be OFF), and
+>   the password is sent + `PEPPER` ('~sd') because Supabase's minimum is 6.
+>   Reset a password with the SQL snippet in tools/supabase-accounts.sql.
+>   The recorder's input log skips password fields.
+> - **Sync**: `Storage.prototype.setItem` is wrapped; `spindeck-logs` goes to
+>   the `reviews` table one row per review, `spindeck-settings` / `-taste` and
+>   Edit profile go to `profiles`. `spindeck-sync-base` is what the server last
+>   confirmed, so a failed upload is just a diff that is retried (online, 20s,
+>   next load) with a toast. Sign-out wipes the local copies.
+> - Wrapped app.js globals: `obNext` (handle must be free — `username_taken`
+>   RPC), `obFinish` (writes username + answers + `onboarded`), `pfeditSave`.
+> - ⚠ Session storage key is `spindeck-auth`, not Supabase's default, so
+>   sessions.html's viewer login can't leak into the app.
+> - `versions.js` is gone from this copy (there are no versions here).
 
 # Spindeck — Music Review App Mockup
 
