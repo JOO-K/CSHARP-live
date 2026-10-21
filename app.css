@@ -13633,3 +13633,65 @@ html.sd-reduce-motion *, html.sd-reduce-motion *::before, html.sd-reduce-motion 
 .s-home-v3--light.s-home-v3--album .v3-song-head * { color: rgba(26,18,8,0.4); }
 .s-home-v3--light.s-home-v3--album .v3-songs-more { border-color: rgba(26,18,8,0.08); color: #b06a2a; }
 .s-home-v3--light.s-home-v3--album .v3-rev-count { color: rgba(26,18,8,0.45); }
+
+/* csharpuserlive (2026-10-20): REFERENCE LYRICS (sdKbComposer, end of app.js).
+   The pill + panel ride above the keyboard bar; a tapped line lands in the
+   text as a `.sd-lyric`, in amber. In the bar the textarea goes see-through
+   (`.is-hl`) over `.sd-kb-hl`, which paints the same text with the colour. */
+.sd-lyric { color: #e8a83c; background: rgba(232,168,60,0.12); border-radius: 4px; }
+.s-home-v3--light .sd-lyric, .sd-theme-light .sd-lyric, .sd-kb-bar.is-light .sd-lyric { color: #b0700c; background: rgba(176,112,12,0.1); }
+.sd-kb-hl {
+  position: absolute; z-index: 0; margin: 0; overflow: hidden; pointer-events: none;
+  white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
+}
+.sd-kb-input { position: relative; z-index: 1; }
+.sd-kb-input.is-hl { background: transparent !important; color: transparent !important; }
+.sd-kb-lyr {
+  position: fixed; z-index: 10002; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 8px; padding: 0 10px 8px;
+  font-family: var(--font-main, 'DM Sans', sans-serif);
+}
+.sd-kb-lyr[hidden], .sd-kb-lyr-panel[hidden] { display: none; }
+.sd-kb-lyr-btn {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 13px; border-radius: 16px; border: none; cursor: pointer;
+  background: #24242c; color: #e8e2d6; font: 600 13px var(--font-main, 'DM Sans', sans-serif);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+}
+.sd-kb-lyr-btn span { color: #e8a83c; font-size: 14px; }
+.sd-kb-lyr-btn.is-on { background: #e8a83c; color: #1a1208; }
+.sd-kb-lyr-btn.is-on span { color: #1a1208; }
+.sd-kb-lyr-panel {
+  order: -1; border-radius: 16px; background: #18181e; overflow: hidden;
+  border: 1px solid rgba(232,226,214,0.1); box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+}
+.sd-kb-lyr-songs {
+  display: flex; gap: 6px; overflow-x: auto; padding: 10px 10px 8px; scrollbar-width: none;
+  border-bottom: 1px solid rgba(232,226,214,0.08);
+}
+.sd-kb-lyr-songs::-webkit-scrollbar { display: none; }
+.sd-kb-lyr-songs:empty { display: none; }
+.sd-kb-lyr-song {
+  flex-shrink: 0; height: 28px; padding: 0 11px; border-radius: 14px; border: none; cursor: pointer;
+  background: rgba(232,226,214,0.08); color: rgba(232,226,214,0.75);
+  font: 500 12.5px var(--font-main, 'DM Sans', sans-serif); white-space: nowrap;
+}
+.sd-kb-lyr-song.is-on { background: #e8e2d6; color: #18181e; }
+.sd-kb-lyr-lines { overflow-y: auto; overscroll-behavior: contain; padding: 4px 0; max-height: 220px; }
+.sd-kb-lyr-line {
+  display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer;
+  padding: 7px 14px; color: #e8e2d6; font: 400 14.5px/1.35 var(--font-main, 'DM Sans', sans-serif);
+}
+.sd-kb-lyr-line:active { background: rgba(232,168,60,0.14); }
+.sd-kb-lyr-line.is-used { color: #e8a83c; }
+.sd-kb-lyr-msg { padding: 14px; color: rgba(232,226,214,0.5); font-size: 13.5px; }
+.sd-kb-lyr-src { padding: 6px 14px 8px; color: rgba(232,226,214,0.35); font-size: 11px; }
+.sd-kb-lyr.is-light .sd-kb-lyr-btn { background: #fff; color: #1a1208; }
+.sd-kb-lyr.is-light .sd-kb-lyr-btn.is-on { background: #e8a83c; }
+.sd-kb-lyr.is-light .sd-kb-lyr-panel { background: #f7f4ee; border-color: rgba(26,18,8,0.1); }
+.sd-kb-lyr.is-light .sd-kb-lyr-songs { border-bottom-color: rgba(26,18,8,0.08); }
+.sd-kb-lyr.is-light .sd-kb-lyr-song { background: rgba(26,18,8,0.06); color: rgba(26,18,8,0.7); }
+.sd-kb-lyr.is-light .sd-kb-lyr-song.is-on { background: #1a1208; color: #f7f4ee; }
+.sd-kb-lyr.is-light .sd-kb-lyr-line { color: #1a1208; }
+.sd-kb-lyr.is-light .sd-kb-lyr-line.is-used { color: #b0700c; }
+.sd-kb-lyr.is-light .sd-kb-lyr-msg, .sd-kb-lyr.is-light .sd-kb-lyr-src { color: rgba(26,18,8,0.45); }

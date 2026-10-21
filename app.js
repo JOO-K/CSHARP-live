@@ -187,7 +187,7 @@ function init() {
   else if (!SD_TOOLS) {
     const boot = typeof sdAccountBootScreen === 'function' ? sdAccountBootScreen() : 'onboarding';
     const i = SCREENS.findIndex(s => s.id === boot);
-    if (i !== -1) { currentIdx = i; window.SD_BOOT_ONBOARDING = boot === 'onboarding'; }
+    if (i !== -1) { currentIdx = i; window.SD_BOOT_ONBOARDING = boot === 'onboarding'; window.SD_BOOT_HOME = boot === 'home'; }
   }
 
   /* Before the first render: the plan decides what some screens are made of
@@ -202,6 +202,8 @@ function init() {
   initPersonas();
   if (!isMobile) { initDevBox(); initRecBox(); }
   if (spBack) svcSpotifyFinish(params);
+  // Opening the app on home: the logo intro plays over it (sdHomeIntro, end of app.js).
+  if (window.SD_BOOT_HOME) sdHomeIntro(() => {}, true);
 }
 
 /* ⚠️ NO AUTOPLAY, and not because it is hard. Previews were briefly armed by the
@@ -2911,7 +2913,7 @@ function cmtNodeHtml(key, c) {
               data-k="${_revAttr(key)}" data-i="${c.id}" aria-label="Delete your comment"
               onclick="event.stopPropagation(); cmtDelete(this)">${CMT_TRASH_SVG}</button>` : ''}
           </div>
-          <div class="v3-cmt-text">${c.text}</div>
+          <div class="v3-cmt-text">${sdLyricHl(c.text)}</div>
           ${CMT_FLAT ? '' : `<div class="v3-cmt-acts"><button class="v3-cmt-reply" type="button"
             data-k="${_revAttr(key)}" data-i="${c.id}"
             onclick="event.stopPropagation(); cmtReply(this)">Reply</button></div>`}
@@ -3491,7 +3493,7 @@ function revCardInner(o) {
 function revNoWidow(t) {
   const s = String(t || '').trim();
   const i = s.lastIndexOf(' ');
-  return (i > 0 && s.length > 24) ? s.slice(0, i) + ' ' + s.slice(i + 1) : s;
+  return sdLyricHl((i > 0 && s.length > 24) ? s.slice(0, i) + ' ' + s.slice(i + 1) : s);
 }
 /* The record line's titles (the home feed): the ALBUM on one line, the
    artist under it. The year was here, left of the album name, for an
@@ -14164,9 +14166,13 @@ function sdIntroFly(cover) {
     fly.remove();
   };
 }
-window.sdHomeIntro = function (go) {
+/* `boot` (csharpuserlive, 2026-10-20 — Eric: "u see the load in animation
+   when u enter the app"): a signed-in, onboarded account opens straight on
+   home, so the intro plays over home itself — the cover is up from the first
+   paint (no fade in, home must not show first) and there is nowhere to go. */
+window.sdHomeIntro = function (go, boot) {
   const reduce = sdReducedMotion();
-  const hosts = [...document.querySelectorAll('.s-onboarding')].filter(e => e.getBoundingClientRect().width);
+  const hosts = [...document.querySelectorAll(boot ? '.s-home-v3' : '.s-onboarding')].filter(e => e.getBoundingClientRect().width);
   if (reduce || typeof anime !== 'function' || !hosts.length || window._sdIntro) { go(); return; }
   window._sdIntro = true;
   const covers = hosts.map(h => {
@@ -14178,7 +14184,7 @@ window.sdHomeIntro = function (go) {
     c.className = 'sd-intro';
     c.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;` +
       `border-radius:${getComputedStyle(frame).borderRadius};` +
-      `background:${ink ? bg : '#111116'};--sd-intro-ink:${ink || '#e8e2d6'}`;
+      `background:${ink ? bg : '#111116'};--sd-intro-ink:${ink || '#e8e2d6'}` + (boot ? ';opacity:1' : '');
     c.innerHTML = sdIntroHtml();
     document.body.appendChild(c);
     return c;
@@ -14197,7 +14203,7 @@ window.sdHomeIntro = function (go) {
   };
   setTimeout(finish, 3200);
   const tl = anime.timeline({ easing: 'easeInOutSine' });
-  tl.add({ targets: covers, opacity: [0, 1], duration: 160, easing: 'linear' })
+  tl.add({ targets: covers, opacity: [boot ? 1 : 0, 1], duration: boot ? 0 : 160, easing: 'linear' })
     // 0.2s longer (Eric, 2026-10-12): every beat ×1.2, the hold to 275ms.
     .add({ targets: all('.sd-intro-belt'), strokeDashoffset: [anime.setDashoffset, 0], duration: 745 })
     .add({ targets: all('.sd-intro-cd'), strokeDashoffset: [anime.setDashoffset, 0], duration: 625 }, '-=505')
@@ -14225,6 +14231,13 @@ window.sdHomeIntro = function (go) {
   document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 })();
 
+/* A referenced lyric (the keyboard composer's Reference lyrics, below) is
+   stored as U+2063 “line” U+2063: invisible markers no keyboard types. On
+   already-escaped HTML: wraps each one in `.sd-lyric`, the lyric colour. */
+function sdLyricHl(html) {
+  return String(html == null ? '' : html).replace(/\u2063([^\u2063]*)\u2063/g, '<span class="sd-lyric">\u2063$1\u2063</span>');
+}
+
 /* ── THE KEYBOARD COMPOSER (0.20, 2026-10-13) ──────────────────────────────
    Eric: "when u write a review or comment the box stays fixed right above the
    keyboard like they do in tiktok … i cant exit out of review quickly unless i
@@ -14249,6 +14262,7 @@ window.sdHomeIntro = function (go) {
   if (!coarse) return;
   const SEL = '.sd-log-write, .v3-cmt-input';
   let src = null, bar = null, ta = null, act = null, scrim = null, closing = false;
+  let hl = null, lyr = null, lyrCtx = null;
 
   function build() {
     scrim = document.createElement('div');
@@ -14258,11 +14272,16 @@ window.sdHomeIntro = function (go) {
     bar.innerHTML = '<textarea class="sd-kb-input" rows="1"></textarea><button class="sd-kb-act" type="button"></button>';
     ta = bar.querySelector('.sd-kb-input');
     act = bar.querySelector('.sd-kb-act');
-    document.body.append(scrim, bar);
+    hl = document.createElement('div');
+    hl.className = 'sd-kb-hl'; hl.hidden = true; hl.setAttribute('aria-hidden', 'true');
+    bar.prepend(hl);
+    lyr = lyrBuild();
+    document.body.append(scrim, lyr, bar);
     // Tap / drag anywhere above the bar = done.
     scrim.addEventListener('pointerdown', e => { e.preventDefault(); close(); });
     scrim.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-    ta.addEventListener('input', () => { grow(); mirror(); });
+    ta.addEventListener('input', () => { grow(); mirror(); syncHl(); });
+    ta.addEventListener('scroll', () => { if (hl) hl.scrollTop = ta.scrollTop; });
     ta.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== ta) close(); }, 0));
     ta.addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey && src && src.classList.contains('v3-cmt-input')) { e.preventDefault(); post(); }
@@ -14334,9 +14353,195 @@ window.sdHomeIntro = function (go) {
     const vv = window.visualViewport;
     const top0 = vv ? vv.offsetTop : 0;
     const bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
-    bar.style.top = (bottom - bar.offsetHeight) + 'px';
+    const barTop = bottom - bar.offsetHeight;
+    bar.style.top = barTop + 'px';
+    let lyrH = 0;
+    if (lyr && !lyr.hidden) {
+      const r = bar.getBoundingClientRect();
+      lyr.style.left = r.left + 'px'; lyr.style.width = r.width + 'px';
+      // The lyrics list gets what's left above the bar, capped.
+      const list = lyr.querySelector('.sd-kb-lyr-lines');
+      if (list) list.style.maxHeight = Math.max(90, Math.min(260, (barTop - top0) * 0.5)) + 'px';
+      lyrH = lyr.offsetHeight;
+      lyr.style.top = (barTop - lyrH) + 'px';
+    }
     scrim.style.top = top0 + 'px';
-    scrim.style.height = Math.max(0, bottom - bar.offsetHeight - top0) + 'px';
+    scrim.style.height = Math.max(0, barTop - lyrH - top0) + 'px';
+    syncHl();
+  }
+  /* ── REFERENCE LYRICS (csharpuserlive, 2026-10-20) ─────────────────────────
+     Eric: "when u write a comment or review … above that can we have an
+     option that says reference lyrics? and then the lyrics show above that u
+     can quick press to reference in your comment or review and they get
+     highlighted a diff color". A "Reference lyrics" pill rides above the bar;
+     it opens the album's REAL tracklist (iTunes Search: the archive's own
+     song titles are generated) and a song's lyrics (LRCLIB). Not Genius: its
+     API has no lyrics, only links to genius.com, whose pages a browser
+     can't read. Both are keyless and CORS-open.
+     A tapped line goes in as “line” wrapped in U+2063 (invisible separator),
+     which no keyboard types. That pair is the whole marker: sdLyricHl
+     colours it wherever reviews and comments render, and in the bar a
+     backdrop (`.sd-kb-hl`) under a see-through textarea paints the same text
+     with the lyric in colour. */
+  function lyrResolve(f) {
+    if (f.closest('#sd-log') && typeof SDLOG !== 'undefined' && SDLOG && SDLOG.subject) {
+      const sj = SDLOG.subject;
+      if (sj.isArtist) return { artist: sj.title };
+      if (sj.isSong) return { album: sj.subtitle || '', song: sj.title };
+      return { artist: sj.subtitle || '', album: sj.title };
+    }
+    const k = f.form && f.form.dataset.k;
+    const R = k && typeof REV_INDEX !== 'undefined' && REV_INDEX[k];
+    const a = R && R.album;
+    return a && a.album ? { artist: a.artist || '', album: a.album } : null;
+  }
+  function lyrBuild() {
+    const el = document.createElement('div');
+    el.className = 'sd-kb-lyr'; el.hidden = true;
+    el.innerHTML = `<div class="sd-kb-lyr-panel" hidden>
+        <div class="sd-kb-lyr-songs"></div>
+        <div class="sd-kb-lyr-lines"></div>
+        <div class="sd-kb-lyr-src">Lyrics from LRCLIB</div>
+      </div>
+      <button class="sd-kb-lyr-btn" type="button"><span>♪</span> Reference lyrics</button>`;
+    // Keep the textarea focused (and the keyboard up) through every tap here.
+    ['pointerdown', 'mousedown'].forEach(t => el.addEventListener(t, e => e.preventDefault()));
+    el.addEventListener('click', e => {
+      if (e.target.closest('.sd-kb-lyr-btn')) { lyrToggle(); return; }
+      const song = e.target.closest('.sd-kb-lyr-song');
+      if (song) { lyrPickSong(+song.dataset.i); return; }
+      const line = e.target.closest('.sd-kb-lyr-line');
+      if (line) { lyrInsert(line.textContent); line.classList.add('is-used'); }
+    });
+    return el;
+  }
+  function lyrOpen(field, light) {
+    lyrCtx = lyrResolve(field);
+    lyr.hidden = !lyrCtx;
+    lyr.classList.toggle('is-light', light);
+    lyr.querySelector('.sd-kb-lyr-panel').hidden = true;
+    lyr.querySelector('.sd-kb-lyr-btn').classList.remove('is-on');
+  }
+  function lyrToggle() {
+    const panel = lyr.querySelector('.sd-kb-lyr-panel');
+    panel.hidden = !panel.hidden;
+    lyr.querySelector('.sd-kb-lyr-btn').classList.toggle('is-on', !panel.hidden);
+    if (!panel.hidden && lyrCtx && !lyrCtx.tracks) lyrLoadTracks(lyrCtx);
+    place();
+  }
+  const LYR_CACHE = new Map();
+  const lyrNorm = x => String(x || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+  const lyrJson = u => fetch(u).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  const lyrTrack = x => ({ title: x.trackName, artist: x.artistName, album: x.collectionName, secs: Math.round((x.trackTimeMillis || 0) / 1000) });
+  function lyrMsg(t) { lyr.querySelector('.sd-kb-lyr-lines').innerHTML = `<div class="sd-kb-lyr-msg">${_sdsEsc(t)}</div>`; place(); }
+  async function lyrTracks(c) {
+    const it = 'https://itunes.apple.com/';
+    const tracksOf = id => lyrJson(`${it}lookup?id=${id}&entity=song&limit=200`)
+      .then(j => j.results.filter(x => x.wrapperType === 'track' && x.kind === 'song').map(lyrTrack));
+    if (c.album) {
+      if (!c.artist) {   // a song sheet knows the album, not the artist: let the song find it
+        const j = await lyrJson(`${it}search?entity=song&limit=10&term=${encodeURIComponent(c.song + ' ' + c.album)}`);
+        const hit = j.results.find(x => lyrNorm(x.collectionName).startsWith(lyrNorm(c.album))) || j.results[0];
+        if (hit) return tracksOf(hit.collectionId);
+      }
+      const j = await lyrJson(`${it}search?entity=album&limit=10&term=${encodeURIComponent((c.artist || '') + ' ' + c.album)}`);
+      const A = lyrNorm(c.artist), B = lyrNorm(c.album);
+      const byArtist = j.results.filter(x => !A || lyrNorm(x.artistName).includes(A) || A.includes(lyrNorm(x.artistName)));
+      const hit = byArtist.find(x => lyrNorm(x.collectionName) === B)
+        || byArtist.find(x => lyrNorm(x.collectionName).startsWith(B)) || byArtist[0];
+      return hit ? tracksOf(hit.collectionId) : [];
+    }
+    // An artist page: their most-found songs.
+    const j = await lyrJson(`${it}search?entity=song&limit=25&term=${encodeURIComponent(c.artist)}`);
+    const A = lyrNorm(c.artist), seen = new Set();
+    return j.results.filter(x => lyrNorm(x.artistName).includes(A) && !seen.has(lyrNorm(x.trackName)) && seen.add(lyrNorm(x.trackName)))
+      .map(lyrTrack);
+  }
+  async function lyrLoadTracks(c) {
+    const songs = lyr.querySelector('.sd-kb-lyr-songs');
+    songs.innerHTML = '';
+    lyrMsg('Finding the tracklist…');
+    const key = JSON.stringify([c.artist, c.album, c.song]);
+    try {
+      if (!LYR_CACHE.has(key)) LYR_CACHE.set(key, await lyrTracks(c));
+    } catch (x) { if (lyrCtx === c) lyrMsg('Couldn’t reach the lyrics service.'); return; }
+    if (lyrCtx !== c) return;
+    c.tracks = LYR_CACHE.get(key);
+    if (!c.tracks.length) { lyrMsg('No tracklist found for this one.'); return; }
+    songs.innerHTML = c.tracks.map((t, i) => `<button class="sd-kb-lyr-song" type="button" data-i="${i}">${_sdsEsc(t.title)}</button>`).join('');
+    const want = c.song ? c.tracks.findIndex(t => lyrNorm(t.title).startsWith(lyrNorm(c.song))) : -1;
+    lyrPickSong(want > -1 ? want : 0);
+  }
+  async function lyrPickSong(i) {
+    const c = lyrCtx, t = c && c.tracks && c.tracks[i];
+    if (!t) return;
+    lyr.querySelectorAll('.sd-kb-lyr-song').forEach(b => b.classList.toggle('is-on', +b.dataset.i === i));
+    const chip = lyr.querySelector(`.sd-kb-lyr-song[data-i="${i}"]`);
+    if (chip) chip.parentNode.scrollTo({ left: chip.offsetLeft - 12, behavior: 'smooth' });
+    lyrMsg('Loading lyrics…');
+    const key = 'l:' + t.artist + '::' + t.title;
+    try {
+      if (!LYR_CACHE.has(key)) {
+        const clean = t.title.replace(/\s*[([](feat|with|ft)\.?[^)\]]*[)\]]/ig, '').replace(/\s+-\s+.*$/, '').trim();
+        const look = name => lyrJson(`https://lrclib.net/api/search?track_name=${encodeURIComponent(name)}&artist_name=${encodeURIComponent(t.artist)}`);
+        let hits = await look(t.title);
+        if (!hits.some(h => h.plainLyrics) && clean !== t.title) hits = await look(clean);
+        // Closest length wins among the ones with words: skips live cuts and edits.
+        const withWords = hits.filter(h => h.plainLyrics);
+        withWords.sort((a, b) => Math.abs((a.duration || 0) - t.secs) - Math.abs((b.duration || 0) - t.secs));
+        const h = withWords[0];
+        LYR_CACHE.set(key, h ? h.plainLyrics : (hits.some(x => x.instrumental) ? '' : null));
+      }
+    } catch (x) { if (lyrCtx === c) lyrMsg('Couldn’t reach the lyrics service.'); return; }
+    if (lyrCtx !== c || !lyr.querySelector(`.sd-kb-lyr-song.is-on[data-i="${i}"]`)) return;
+    const text = LYR_CACHE.get(key);
+    if (text === '') { lyrMsg('Instrumental, no lyrics.'); return; }
+    if (!text) { lyrMsg('No lyrics found for this song.'); return; }
+    const lines = [];
+    text.split('\n').map(l => l.trim()).filter(l => l && !/^\[.*\]$/.test(l))
+      .forEach(l => { if (lines[lines.length - 1] !== l) lines.push(l); });
+    const box = lyr.querySelector('.sd-kb-lyr-lines');
+    box.innerHTML = lines.map(l => `<button class="sd-kb-lyr-line" type="button">${_sdsEsc(l)}</button>`).join('');
+    box.scrollTop = 0;
+    place();
+  }
+  function lyrInsert(line) {
+    if (!line) return;
+    const v = ta.value;
+    const a = ta.selectionStart == null ? v.length : ta.selectionStart;
+    const b = ta.selectionEnd == null ? v.length : ta.selectionEnd;
+    const pre = a > 0 && !/\s$/.test(v.slice(0, a)) ? ' ' : '';
+    const post = b === v.length || !/^\s/.test(v.slice(b)) ? ' ' : '';
+    let q = line;
+    const room = ta.maxLength > 0 ? ta.maxLength - (v.length - (b - a)) - pre.length - post.length - 4 : Infinity;
+    if (room < 4) return;
+    if (q.length > room) q = q.slice(0, room - 1).trimEnd() + '…';
+    ta.setRangeText(`${pre}⁣“${q}”⁣${post}`, a, b, 'end');
+    grow(); mirror(); syncHl();
+  }
+  // The backdrop: the textarea's own look and text, with the lyrics coloured.
+  // Only while the text holds a lyric; otherwise the plain textarea is left be.
+  const HL_PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight', 'letterSpacing', 'wordSpacing',
+    'textAlign', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderRightWidth',
+    'borderBottomWidth', 'borderLeftWidth', 'borderRadius', 'boxSizing'];
+  function syncHl() {
+    if (!hl || !ta) return;
+    const on = ta.value.includes('⁣') && bar.classList.contains('is-open');
+    ta.classList.remove('is-hl');
+    if (!on) { hl.hidden = true; return; }
+    const cs = getComputedStyle(ta);
+    HL_PROPS.forEach(k => { hl.style[k] = cs[k]; });
+    hl.style.borderStyle = 'solid'; hl.style.borderColor = 'transparent';
+    hl.style.backgroundColor = cs.backgroundColor;
+    hl.style.backgroundImage = cs.backgroundImage;
+    hl.style.color = cs.color;
+    ta.style.caretColor = cs.color;
+    hl.style.left = ta.offsetLeft + 'px'; hl.style.top = ta.offsetTop + 'px';
+    hl.style.width = ta.offsetWidth + 'px'; hl.style.height = ta.offsetHeight + 'px';
+    hl.innerHTML = sdLyricHl(_sdsEsc(ta.value)) + '\n';
+    hl.hidden = false;
+    ta.classList.add('is-hl');
+    hl.scrollTop = ta.scrollTop;
   }
   function open(field) {
     if (!bar) build();
@@ -14355,6 +14560,7 @@ window.sdHomeIntro = function (go) {
     bar.classList.toggle('is-review', !isCmt);
     if (isCmt) undress(); else dressAsReview(field);
     bar.classList.add('is-open'); scrim.classList.add('is-open');
+    lyrOpen(field, light);
     ta.focus({ preventScroll: true });
     try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (x) {}
     grow();
@@ -14366,6 +14572,8 @@ window.sdHomeIntro = function (go) {
     mirror();
     if (src && src.classList.contains('v3-cmt-input') && typeof cmtGrow === 'function') cmtGrow(src);
     bar.classList.remove('is-open'); scrim.classList.remove('is-open');
+    if (lyr) lyr.hidden = true;
+    if (hl) { hl.hidden = true; ta.classList.remove('is-hl'); }
     if (document.activeElement === ta) ta.blur();
     src = null;
     closing = false;
