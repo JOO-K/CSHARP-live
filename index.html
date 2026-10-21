@@ -1,6 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- ITS OWN STORAGE (csharpuserlive, 2026-10-20). CSHARP-user lives on the
+       same origin (joo-k.github.io), and localStorage is per ORIGIN, not per
+       path — so the two sites were reading and writing the same keys, and
+       taps on the other site turned up on your profile here (and were
+       uploaded to the account). Every key this page uses is now stored as
+       sdlive:<key>; the code above this line never sees the prefix. The
+       roadmap board is left shared (never erase a reader's board). The first
+       load after the split carries the sign-in across, and nothing else.
+       Must run before any other script touches storage. -->
+  <script>
+    (function () {
+      try {
+        var ls = window.localStorage, P = 'sdlive:', S = Storage.prototype;
+        var g = S.getItem, s = S.setItem, r = S.removeItem;
+        var own = function (st, k) {
+          return st === ls && typeof k === 'string' && k.indexOf(P) !== 0 && k.indexOf('spindeck-roadmap') !== 0;
+        };
+        if (g.call(ls, P + 'spindeck-auth') == null && g.call(ls, 'spindeck-auth') != null) {
+          ['spindeck-auth', 'spindeck-account'].forEach(function (k) {
+            var v = g.call(ls, k); if (v != null) s.call(ls, P + k, v);
+          });
+        }
+        S.getItem = function (k) { return g.call(this, own(this, k) ? P + k : k); };
+        S.setItem = function (k, v) { return s.call(this, own(this, k) ? P + k : k, v); };
+        S.removeItem = function (k) { return r.call(this, own(this, k) ? P + k : k); };
+      } catch (e) {}
+    })();
+  </script>
   <!-- WIREFRAME MODE (0.13): on unless "Images" was picked in Notifications
        (sdSetViewMode, app.js). Set here so no real cover paints first. -->
   <script>/* csharpuserlive: real images by default; wireframe only if chosen */ try { if (localStorage.getItem('sd-view-mode') === 'wire') document.documentElement.classList.add('sd-wire'); } catch (e) {}</script>
@@ -11,7 +39,7 @@
        build, the page reloads at ?b=<build> — a URL the phone has never cached.
        ⚠ Bump SD_BUILD here AND version.txt together on every push. -->
   <script>
-    window.SD_BUILD = '12';
+    window.SD_BUILD = '13';
     fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
       v = (v || '').trim();
       if (!v || v === window.SD_BUILD) return;
@@ -328,7 +356,7 @@
        app.js (it wraps obNext / obFinish / pfeditSave) and before the
        DOMContentLoaded init() that asks it which screen to open on. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="account.js?v=9"></script>
+  <script src="account.js?v=10"></script>
   <script src="fests.js?v=1"></script>
   <!-- Quick share — needs app.js first (computeAlbumColors, albumDraft, shellAlbum). -->
   <script src="share.js?v=15"></script>

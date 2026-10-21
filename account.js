@@ -76,6 +76,7 @@
   const acc = () => readJSON(ACC_KEY, null);
   const saveAcc = a => rawSet(ACC_KEY, JSON.stringify(a));
   let UID = (acc() || {}).id || null;
+  let CREATED = 0;                           // the account's creation time (ms), for the one-time purge in pullReviews
 
   /* ── BOOT ─────────────────────────────────────────────────────────────────
      Synchronous — init() asks before anything paints. If the library didn't
@@ -205,6 +206,7 @@
   /* ── SIGN-IN: the account comes down to this phone ────────────────────── */
   async function sdAfterSignIn(user) {
     UID = user.id;
+    CREATED = Date.parse(user.created_at) || 0;
     A.busy = true; say('Loading your account…');
     let { data: prof, error } = await sb.from('profiles').select('*').eq('id', UID).maybeSingle();
     if (!error && !prof) {
@@ -281,6 +283,19 @@
       else if (s) { if (!(k in base)) merged[k] = s; }       // in base but gone locally = deleted here, still to send
       else if (l) { if (!(k in base)) merged[k] = l; }       // in base but gone on the server = deleted elsewhere
     });
+    /* ONE-TIME PURGE (2026-10-20). CSHARP-user and this site share an origin
+       (joo-k.github.io), so until index.html's storage namespace they shared
+       localStorage too: whatever was tapped on the other site sat in this
+       one's `spindeck-logs`, and the first sign-in uploaded it into the
+       account (Eric: fake songs / listen later on his own profile). Anything
+       last touched BEFORE the account existed can't be this account's
+       activity — drop it here, and flushReviews deletes it on the server
+       (it's in base, gone locally). Once per account per browser. */
+    const PURGED = 'spindeck-leak-purged';
+    if (CREATED && ls.getItem(PURGED) !== UID) {
+      Object.keys(merged).forEach(k => { if (((merged[k] || {}).updated || 0) < CREATED) delete merged[k]; });
+      rawSet(PURGED, UID);
+    }
     const before = ls.getItem(LOGS_KEY) || '{}';
     const after = JSON.stringify(merged);
     rawSet(LOGS_KEY, after);
@@ -475,6 +490,7 @@
       }
       if (!a || a.id !== session.user.id) { await sdAfterSignIn(session.user); return; }
       UID = session.user.id;
+      CREATED = Date.parse(session.user.created_at) || 0;
       // Same person, same phone: send up anything that didn't make it last
       // time, and bring down reviews written on another device.
       flushProfile();
