@@ -13695,3 +13695,11 @@ html.sd-reduce-motion *, html.sd-reduce-motion *::before, html.sd-reduce-motion 
 .sd-kb-lyr.is-light .sd-kb-lyr-line { color: #1a1208; }
 .sd-kb-lyr.is-light .sd-kb-lyr-line.is-used { color: #b0700c; }
 .sd-kb-lyr.is-light .sd-kb-lyr-msg, .sd-kb-lyr.is-light .sd-kb-lyr-src { color: rgba(26,18,8,0.45); }
+/* Review mode: Reference lyrics shares the top row with Done (pill left, Done
+   right), the box wraps under them. Done keeps the right edge on its own. */
+.sd-kb-bar.is-review, .sd-kb-bar.is-review.is-light { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.sd-kb-bar.is-review .sd-kb-act { margin-left: auto; }
+.sd-kb-bar .sd-kb-lyr-btn { order: -2; box-shadow: none; }
+.sd-kb-lyr-btn[hidden] { display: none; }
+.sd-kb-bar.is-light .sd-kb-lyr-btn { background: rgba(26,18,8,0.08); color: #1a1208; }
+.sd-kb-bar.is-light .sd-kb-lyr-btn.is-on { background: #e8a83c; color: #1a1208; }

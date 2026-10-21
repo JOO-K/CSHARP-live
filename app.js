@@ -14262,7 +14262,7 @@ function sdLyricHl(html) {
   if (!coarse) return;
   const SEL = '.sd-log-write, .v3-cmt-input';
   let src = null, bar = null, ta = null, act = null, scrim = null, closing = false;
-  let hl = null, lyr = null, lyrCtx = null;
+  let hl = null, lyr = null, lyrBtn = null, lyrCtx = null;
 
   function build() {
     scrim = document.createElement('div');
@@ -14359,9 +14359,10 @@ function sdLyricHl(html) {
     if (lyr && !lyr.hidden) {
       const r = bar.getBoundingClientRect();
       lyr.style.left = r.left + 'px'; lyr.style.width = r.width + 'px';
-      // The lyrics list gets what's left above the bar, capped.
+      // The lyrics list takes what's left above the bar, less the song chips,
+      // the credit and a strip of scrim to tap out on.
       const list = lyr.querySelector('.sd-kb-lyr-lines');
-      if (list) list.style.maxHeight = Math.max(90, Math.min(260, (barTop - top0) * 0.5)) + 'px';
+      if (list) list.style.maxHeight = Math.max(90, barTop - top0 - 130) + 'px';
       lyrH = lyr.offsetHeight;
       lyr.style.top = (barTop - lyrH) + 'px';
     }
@@ -14402,12 +14403,17 @@ function sdLyricHl(html) {
         <div class="sd-kb-lyr-songs"></div>
         <div class="sd-kb-lyr-lines"></div>
         <div class="sd-kb-lyr-src">Lyrics from LRCLIB</div>
-      </div>
-      <button class="sd-kb-lyr-btn" type="button"><span>♪</span> Reference lyrics</button>`;
+      </div>`;
+    /* The pill is its own node: in REVIEW mode it rides the bar's top row,
+       left of Done (Eric, 2026-10-20: "on the same line as the done so we can
+       have the lyrics window be larger"); for a comment it sits above the bar. */
+    lyrBtn = document.createElement('button');
+    lyrBtn.className = 'sd-kb-lyr-btn'; lyrBtn.type = 'button';
+    lyrBtn.innerHTML = '<span>♪</span> Reference lyrics';
     // Keep the textarea focused (and the keyboard up) through every tap here.
-    ['pointerdown', 'mousedown'].forEach(t => el.addEventListener(t, e => e.preventDefault()));
+    [el, lyrBtn].forEach(n => ['pointerdown', 'mousedown'].forEach(t => n.addEventListener(t, e => e.preventDefault())));
+    lyrBtn.addEventListener('click', lyrToggle);
     el.addEventListener('click', e => {
-      if (e.target.closest('.sd-kb-lyr-btn')) { lyrToggle(); return; }
       const song = e.target.closest('.sd-kb-lyr-song');
       if (song) { lyrPickSong(+song.dataset.i); return; }
       const line = e.target.closest('.sd-kb-lyr-line');
@@ -14417,15 +14423,24 @@ function sdLyricHl(html) {
   }
   function lyrOpen(field, light) {
     lyrCtx = lyrResolve(field);
-    lyr.hidden = !lyrCtx;
+    const inBar = bar.classList.contains('is-review');
+    if (inBar) bar.prepend(lyrBtn); else lyr.append(lyrBtn);
+    lyrBtn.hidden = !lyrCtx;
+    lyrBtn.classList.remove('is-on');
     lyr.classList.toggle('is-light', light);
     lyr.querySelector('.sd-kb-lyr-panel').hidden = true;
-    lyr.querySelector('.sd-kb-lyr-btn').classList.remove('is-on');
+    lyrShow();
+  }
+  // In review mode the stack above the bar is only the panel, so it shows with it.
+  function lyrShow() {
+    const panelUp = !lyr.querySelector('.sd-kb-lyr-panel').hidden;
+    lyr.hidden = !lyrCtx || (lyrBtn.parentNode === bar && !panelUp);
   }
   function lyrToggle() {
     const panel = lyr.querySelector('.sd-kb-lyr-panel');
     panel.hidden = !panel.hidden;
-    lyr.querySelector('.sd-kb-lyr-btn').classList.toggle('is-on', !panel.hidden);
+    lyrBtn.classList.toggle('is-on', !panel.hidden);
+    lyrShow();
     if (!panel.hidden && lyrCtx && !lyrCtx.tracks) lyrLoadTracks(lyrCtx);
     place();
   }
